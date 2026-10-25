@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}{{ app_title }} · 日报{% endblock %}
+
+{% block content %}
+
+    <!-- ====== 日报筛选栏 ====== -->
+    <div class="panel p-4 mb-6">
+        <div class="mb-3">
+            <div class="field-label">按领域</div>
+            <div class="flex flex-wrap gap-2">
+                <a href="javascript:void(0);" onclick="goFilter('category', '')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == '' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    全部
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('category', 'ai_model')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == 'ai_model' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    AI大模型
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('category', 'data_labeling')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == 'data_labeling' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    数据标注
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('category', 'embodied_ai')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == 'embodied_ai' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    具身智能
+                </a>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
+            <div>
+                <div class="field-label">关键词</div>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="keyword-input" placeholder="搜索日报关键词..."
+                           value="{{ current_keyword }}"
+                           autocomplete="off"
+                           readonly
+                           onfocus="this.removeAttribute('readonly')"
+                           class="input-field w-full sm:w-56 px-3 py-1.5 text-sm placeholder:text-navy-200"
+                           onkeydown="if(event.key==='Enter'){goFilter('keyword', this.value.trim())}">
+                    <button type="button" onclick="goFilter('keyword', document.getElementById('keyword-input').value.trim())"
+                            class="btn btn-secondary px-3 py-1.5 text-sm rounded-md flex-shrink-0 whitespace-nowrap">搜索</button>
+                    {% if current_keyword %}
+                    <a href="javascript:void(0);" onclick="goFilter('keyword', '')"
+                       class="text-navy-300 hover:text-navy-600 text-sm">✕</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="field-label">按日期</div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="date" id="date-from" value="{{ current_date_from }}"
+                           class="input-field px-2 py-1.5 text-sm text-navy-800{% if not current_date_from %} date-empty{% endif %}">
+                    <span class="text-xs text-navy-300">至</span>
+                    <input type="date" id="date-to" value="{{ current_date_to }}"
+                           class="input-field px-2 py-1.5 text-sm text-navy-800{% if not current_date_to %} date-empty{% endif %}">
+                    <button type="button" onclick="applyDateFilter()"
+                            class="btn btn-primary px-3 py-1.5 text-sm rounded-md flex-shrink-0 whitespace-nowrap">应用</button>
+                    {% if current_date_from or current_date_to %}
+                    <button type="button" onclick="clearDateFilter()"
+                            class="px-2 py-1.5 text-sm text-navy-400 hover:text-navy-700 flex-shrink-0 whitespace-nowrap">✕ 清除</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function goFilter(name, value) {
+            var params = new URLSearchParams(window.location.search);
+            params.delete('page');
+            params.delete('date');  // 手动筛选时去掉钉钉链接带的 date 参数
+            if (value) { params.set(name, value); } else { params.delete(name); }
+            window.location.href = '?' + params.toString();
+        }
+        function applyDateFilter() {
+            var params = new URLSearchParams(window.location.search);
+            params.delete('page');
+            params.delete('date');
+            var from = document.getElementById('date-from').value;
+            var to = document.getElementById('date-to').value;
+            if (from) { params.set('date_from', from); } else { params.delete('date_from'); }
+            if (to) { params.set('date_to', to); } else { params.delete('date_to'); }
+            window.location.href = '?' + params.toString();
+        }
+        function clearDateFilter() {
+            var params = new URLSearchParams(window.location.search);
+            params.delete('page');
+            params.delete('date');
+            params.delete('date_from');
+            params.delete('date_to');
+            window.location.href = '?' + params.toString();
+        }
+        function syncDateEmptyClass() {
+            document.querySelectorAll('input[type="date"]').forEach(function (el) {
+                el.classList.toggle('date-empty', !el.value);
+            });
+        }
+        document.querySelectorAll('input[type="date"]').forEach(function (el) {
+            el.addEventListener('input', syncDateEmptyClass);
+            el.addEventListener('change', syncDateEmptyClass);
+        });
+        syncDateEmptyClass();
+    </script>
+
+    <!-- ====== 日报列表 ====== -->
+    {% if has_reports %}
+
+        <div class="space-y-2.5" id="report-list">
+            {% for r in reports %}
+            <div class="report-card rounded-lg p-3" style="--i:{{ loop.index0 if loop.index0 < 12 else 12 }}">
+                <!-- 头部：日期 + 领域标签 + 素材数 + 展开/收起按钮（默认收起） -->
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-sm font-semibold text-navy-800 whitespace-nowrap">{{ r.report_date }}</span>
+                        <span class="category-tag category-{{ r.category }}">
+                            {% if r.category == 'ai_model' %}AI大模型
+                            {% elif r.category == 'data_labeling' %}数据标注
+                            {% elif r.category == 'embodied_ai' %}具身智能
+                            {% else %}其他{% endif %}
+                        </span>
+                        {% if r.source_count %}
+                        <span class="text-xs text-navy-300">基于 {{ r.source_count }} 条新闻</span>
+                        {% endif %}
+                    </div>
+                    <button type="button" onclick="toggleReport(this)"
+                            class="report-toggle-btn" aria-expanded="false">
+                        <span class="report-toggle-icon">▾</span><span class="report-toggle-label">展开</span>
+                    </button>
+                </div>
+
+                <!-- 标题（始终可见） -->
+                <h2 class="text-[15px] font-semibold text-navy-900 leading-snug mb-2">{{ r.title }}</h2>
+
+                <!-- 正文（默认隐藏，点「展开」才显示） -->
+                <div class="report-body hidden">
+
+                <!-- 核心结论 -->
+                {% if r.summary %}
+                <div class="report-block block-summary rounded-lg p-3 mb-3">
+                    <div class="report-section-title mb-1">核心结论</div>
+                    <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ r.summary }}</p>
+                </div>
+                {% endif %}
+
+                <!-- 重点事件 -->
+                {% if r.events_list %}
+                <div class="report-block block-events rounded-lg p-3 mb-3">
+                    <div class="report-section-title mb-1">重点事件</div>
+                    {% for e in r.events_list %}
+                    <div class="report-event-item">
+                        <div class="report-event-title text-sm font-medium text-navy-800">{{ loop.index }}. {{ e.title }}</div>
+                        {% if e.impact %}
+                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed mt-0.5">{{ e.impact }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- 影响分析 / 战略意义 / 趋势观察 -->
+                <!-- 卡片式分点（2026-08-12）：新日报 *_points 是「▍小标题 + 阐述」要点数组；
+                     旧日报 *_points 为 None → 回退纯文本段落。
+                     色块提亮（2026-08-12）：影响=淡蓝、战略=淡绿、趋势=淡橙（style.css .block-*）。 -->
+                <div class="grid gap-3 sm:grid-cols-2 mt-4">
+                    {% if r.impact_points %}
+                    <div class="report-block block-impact rounded-lg p-3">
+                        <div class="report-section-title mb-1">影响分析</div>
+                        {% for p in r.impact_points %}
+                        <div class="report-point-item">
+                            {% if p.point %}<div class="report-point-title">▍{{ p.point }}</div>{% endif %}
+                            <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ p.detail }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% elif r.impact %}
+                    <div class="report-block block-impact rounded-lg p-3">
+                        <div class="report-section-title mb-1">影响分析</div>
+                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ r.impact }}</p>
+                    </div>
+                    {% endif %}
+                    {% if r.strategy_points %}
+                    <div class="report-block block-strategy rounded-lg p-3">
+                        <div class="report-section-title mb-1">战略意义</div>
+                        {% for p in r.strategy_points %}
+                        <div class="report-point-item">
+                            {% if p.point %}<div class="report-point-title">▍{{ p.point }}</div>{% endif %}
+                            <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ p.detail }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% elif r.strategy %}
+                    <div class="report-block block-strategy rounded-lg p-3">
+                        <div class="report-section-title mb-1">战略意义</div>
+                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ r.strategy }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if r.trend_points %}
+                <div class="report-trend-note block-trend mt-3">
+                    <div class="report-section-title mb-1">趋势观察（跨时间联想）</div>
+                    {% for p in r.trend_points %}
+                    <div class="report-point-item">
+                        {% if p.point %}<div class="report-point-title">▍{{ p.point }}</div>{% endif %}
+                        <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ p.detail }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% elif r.trend %}
+                <div class="report-trend-note block-trend mt-3">
+                    <div class="report-section-title mb-1">趋势观察（跨时间联想）</div>
+                    <p class="text-sm text-[var(--ink-soft)] leading-relaxed">{{ r.trend }}</p>
+                </div>
+                {% endif %}
+
+                </div><!-- /.report-body -->
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ====== 分页 ====== -->
+        {% if total_pages > 1 %}
+        <div class="flex items-center justify-center gap-2 mt-6">
+            {% if current_page > 1 %}
+            <a href="?page={{ current_page - 1 }}&category={{ current_category }}&keyword={{ current_keyword|urlencode }}&date_from={{ current_date_from }}&date_to={{ current_date_to }}"
+               class="btn btn-secondary px-3 py-1.5 text-sm rounded-md">← 上一页</a>
+            {% endif %}
+            <span class="text-sm text-navy-500">第 {{ current_page }} / {{ total_pages }} 页</span>
+            {% if current_page < total_pages %}
+            <a href="?page={{ current_page + 1 }}&category={{ current_category }}&keyword={{ current_keyword|urlencode }}&date_from={{ current_date_from }}&date_to={{ current_date_to }}"
+               class="btn btn-secondary px-3 py-1.5 text-sm rounded-md">下一页 →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    {% else %}
+
+    <!-- ====== 空状态 ====== -->
+    <div class="panel rounded-lg p-12 text-center">
+        {% if has_filters %}
+        <div class="text-5xl mb-4">🔍</div>
+        <h2 class="text-lg font-semibold text-navy-800 mb-2">该条件下暂无日报</h2>
+        <p class="text-sm text-navy-500 mb-4">
+            当前筛选：{% if current_category %}领域="{{ current_category }}"{% endif %}
+            {% if current_keyword %}关键词="{{ current_keyword }}"{% endif %}
+            {% if current_date_from or current_date_to %}日期="{{ current_date_from or '不限开始' }} ~ {{ current_date_to or '不限结束' }}"{% endif %}
+        </p>
+        <a href="/reports" class="btn btn-primary inline-block px-4 py-2 text-sm rounded-md">清除筛选</a>
+        {% else %}
+        <div class="text-5xl mb-4">📄</div>
+        <h2 class="text-lg font-semibold text-navy-800 mb-2">还没有日报</h2>
+        <p class="text-sm text-navy-500">系统每晚 20:30 自动生成当日日报；也可点击右上角「📄 生成日报」手动生成并推送。</p>
+        {% endif %}
+    </div>
+
+    {% endif %}
+
+    <script>
+        // 日报卡片展开/收起：只切换 .report-body 的 hidden，标题与头部始终可见
+        function toggleReport(btn) {
+            var card = btn.closest('.report-card');
+            var body = card.querySelector('.report-body');
+            if (!body) { return; }
+            body.classList.toggle('hidden');
+            var open = !body.classList.contains('hidden');
+            var icon = btn.querySelector('.report-toggle-icon');
+            var label = btn.querySelector('.report-toggle-label');
+            if (icon) { icon.textContent = open ? '▴' : '▾'; }
+            if (label) { label.textContent = open ? '收起' : '展开'; }
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+    </script>
+
+{% endblock %}

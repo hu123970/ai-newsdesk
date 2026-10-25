@@ -1,0 +1,30 @@
+{
+  "sources": [
+    {"name": "TechCrunch", "source_type": "rss", "url": "https://techcrunch.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "The Verge", "source_type": "rss", "url": "https://www.theverge.com/rss/index.xml", "region": "overseas", "category": "ai_model"},
+    {"name": "VentureBeat", "source_type": "rss", "url": "https://venturebeat.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "Ars Technica", "source_type": "rss", "url": "https://feeds.arstechnica.com/arstechnica/index", "region": "overseas", "category": "ai_model"},
+    {"name": "Wired", "source_type": "rss", "url": "https://www.wired.com/feed/rss", "region": "overseas", "category": "ai_model"},
+    {"name": "MIT Technology Review", "source_type": "rss", "url": "https://www.technologyreview.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "Hacker News", "source_type": "rss", "url": "https://hnrss.org/frontpage", "region": "overseas", "category": "ai_model"},
+    {"name": "Google AI Blog", "source_type": "rss", "url": "https://blog.google/technology/ai/rss/", "region": "overseas", "category": "ai_model"},
+    {"name": "Google DeepMind Blog", "source_type": "rss", "url": "https://deepmind.google/blog/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "NVIDIA AI Blog", "source_type": "rss", "url": "https://blogs.nvidia.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "The Decoder", "source_type": "rss", "url": "https://the-decoder.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "MarkTechPost", "source_type": "rss", "url": "https://www.marktechpost.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "AI News", "source_type": "rss", "url": "https://www.artificialintelligence-news.com/feed/", "region": "overseas", "category": "ai_model"},
+    {"name": "钛媒体", "source_type": "rss", "url": "https://www.tmtpost.com/rss", "region": "china", "category": "ai_model"},
+    {"name": "量子位", "source_type": "rss", "url": "https://www.qbitai.com/feed", "region": "china", "category": "ai_model"},
+    {"name": "虎嗅24小时", "source_type": "rss", "url": "http://127.0.0.1:1200/huxiu/moment", "region": "china", "category": "ai_model"},
+    {"name": "品玩实时要闻", "source_type": "rss", "url": "http://127.0.0.1:1200/pingwest/status", "region": "china", "category": "ai_model"},
+    {"name": "Innodata Blog", "source_type": "rss", "url": "https://innodata.com/feed", "region": "overseas", "category": "data_labeling"},
+    {"name": "Towards Data Science", "source_type": "rss", "url": "https://towardsdatascience.com/feed", "region": "overseas", "category": "data_labeling"},
+    {"name": "宇树科技微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/1818617132", "region": "china", "category": "embodied_ai"},
+    {"name": "银河通用微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/7898745089", "region": "china", "category": "embodied_ai"},
+    {"name": "智元机器人微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/7800251567", "region": "china", "category": "embodied_ai"},
+    {"name": "优必选微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/3466589544", "region": "china", "category": "embodied_ai"},
+    {"name": "松延动力微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/7994329619", "region": "china", "category": "embodied_ai"},
+    {"name": "海天瑞声微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/1900516685", "region": "china", "category": "data_labeling"},
+    {"name": "云测数据微博", "source_type": "rss", "url": "http://127.0.0.1:1200/weibo/user/2695749942", "region": "china", "category": "data_labeling"}
+  ]
+}

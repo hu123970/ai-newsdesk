@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · {{ app_title }}</title>
+
+    <!-- Tailwind CSS（从 CDN 加载，与主站一致的 navy 色板） -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: {
+                navy: {
+                    50:  '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0',
+                    300: '#CBD5E1', 400: '#94A3B8', 500: '#64748B',
+                    600: '#475569', 700: '#334155', 800: '#1E293B', 900: '#0F172A',
+                }
+            }}}
+        };
+    </script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="min-h-screen bg-navy-50 flex flex-col">
+
+    <!-- 品牌色条（与主站一致） -->
+    <div class="brand-bar"></div>
+
+    <div class="flex-1 flex items-center justify-center px-4 py-10">
+        <div class="w-full max-w-sm">
+            <!-- 卡片 -->
+            <div class="bg-white rounded-xl shadow-sm border border-navy-100 p-8">
+                <!-- Logo + 标题 -->
+                <div class="flex flex-col items-center mb-6">
+                    <img src="/static/logo.png" alt="AI NewsDesk" class="h-14 w-auto mb-4">
+                    <h1 class="text-xl font-bold text-navy-800 tracking-tight">{{ app_title }}</h1>
+                    <p class="text-xs text-navy-400 mt-1">AI NewsDesk · Industry Intelligence</p>
+                </div>
+
+                <!-- ===== 身份选择（管理员 / 用户） ===== -->
+                <div class="flex gap-2 mb-5" id="role-selector" role="tablist" aria-label="登录身份">
+                    <button type="button" data-role="admin" class="role-btn role-btn-active flex-1" onclick="selectRole('admin')">👑 管理员</button>
+                    <button type="button" data-role="user" class="role-btn flex-1" onclick="selectRole('user')">👤 用户</button>
+                </div>
+
+                <!-- ===== 登录表单 ===== -->
+                <div id="panel-login">
+                    <form id="login-form" class="space-y-4" onsubmit="return submitLogin(event)">
+                        <div>
+                            <label class="block text-xs text-navy-600 mb-1" for="username">用户名</label>
+                            <input type="text" id="username" name="username" autocomplete="username"
+                                   class="input-field w-full h-10 px-3 text-sm" placeholder="请输入用户名" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-navy-600 mb-1" for="password">密码</label>
+                            <input type="password" id="password" name="password" autocomplete="current-password"
+                                   class="input-field w-full h-10 px-3 text-sm" placeholder="请输入密码" required>
+                        </div>
+                        <div id="login-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2"></div>
+                        <button type="submit" id="login-btn"
+                                class="btn btn-primary w-full h-10 rounded-lg text-sm font-medium disabled:opacity-60">
+                            登 录
+                        </button>
+                    </form>
+                    <div class="mt-4 text-center text-sm" id="forgot-password-wrap">
+                        <button type="button" onclick="showResetPanel()"
+                                class="text-navy-500 hover:text-navy-700 hover:underline text-xs">忘记密码？</button>
+                    </div>
+                </div>
+
+                <!-- ===== 找回密码面板 ===== -->
+                <div id="panel-reset" class="hidden">
+                    <h2 class="text-center text-sm font-semibold text-navy-800 mb-1">找回密码</h2>
+                    <p class="text-xs text-navy-400 text-center mb-4">重置码将通过钉钉推送到所有群，10 分钟内有效</p>
+
+                    <div class="space-y-4">
+                        <div id="reset-info" class="hidden text-xs text-navy-600 bg-navy-50 border border-navy-100 rounded-md px-3 py-2"></div>
+                        <div id="reset-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2"></div>
+
+                        <div>
+                            <label class="block text-xs text-navy-600 mb-1">① 获取重置码</label>
+                            <button type="button" id="get-code-btn" onclick="getResetCode()"
+                                    class="btn btn-secondary w-full h-10 rounded-lg text-sm disabled:opacity-60">发送重置码到钉钉</button>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs text-navy-600 mb-1" for="reset-code">② 重置码</label>
+                            <input type="text" id="reset-code" inputmode="numeric" maxlength="6" placeholder="6 位数字"
+                                   class="input-field w-full h-10 px-3 text-sm text-center tracking-[0.5em] font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-navy-600 mb-1" for="new-password">③ 新密码</label>
+                            <input type="password" id="new-password" autocomplete="new-password" placeholder="至少 6 位"
+                                   class="input-field w-full h-10 px-3 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-navy-600 mb-1" for="new-password2">确认新密码</label>
+                            <input type="password" id="new-password2" autocomplete="new-password" placeholder="再次输入新密码"
+                                   class="input-field w-full h-10 px-3 text-sm">
+                        </div>
+                        <button type="button" id="reset-btn" onclick="submitReset()"
+                                class="btn btn-primary w-full h-10 rounded-lg text-sm font-medium disabled:opacity-60">重 置 密 码</button>
+                    </div>
+
+                    <div class="mt-4 text-center">
+                        <button type="button" onclick="showLoginPanel()"
+                                class="text-navy-500 hover:text-navy-700 hover:underline text-xs">← 返回登录</button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-center text-xs text-navy-400 mt-6">AI NewsDesk · AI 行业动态聚合平台</p>
+        </div>
+    </div>
+
+    <script>
+        // 登录成功后的跳转地址（服务端传入，已校验为站内路径）
+        var NEXT = {{ next | tojson }};
+
+        // ---- 身份选择（管理员 / 用户） ----
+        var CURRENT_ROLE = 'admin';
+        function selectRole(role) {
+            CURRENT_ROLE = role;
+            var btns = document.querySelectorAll('#role-selector .role-btn');
+            btns.forEach(function (b) {
+                b.classList.toggle('role-btn-active', b.getAttribute('data-role') === role);
+            });
+            var userEl = document.getElementById('username');
+            userEl.value = '';
+            // 用户名输入框不显示灰色占位符，保持空白
+            // 忘记密码仅管理员身份下显示（重置码走钉钉推送到所有群，仅管理员可用）
+            document.getElementById('forgot-password-wrap').style.display =
+                role === 'admin' ? '' : 'none';
+        }
+        // 默认选中管理员
+        selectRole('admin');
+
+        function setBusy(btn, busy) {
+            btn.disabled = busy;
+            btn.textContent = busy ? "请稍候…" : btn.dataset.text || btn.textContent;
+        }
+
+        function showError(id, msg) {
+            var el = document.getElementById(id);
+            el.textContent = msg;
+            el.classList.remove("hidden");
+        }
+        function hideError(id) {
+            document.getElementById(id).classList.add("hidden");
+        }
+
+        async function submitLogin(e) {
+            e.preventDefault();
+            hideError("login-error");
+            var btn = document.getElementById("login-btn");
+            setBusy(btn, true);
+            try {
+                var resp = await fetch("/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username: document.getElementById("username").value.trim(),
+                        password: document.getElementById("password").value,
+                        role: CURRENT_ROLE,
+                        next: NEXT,
+                    }),
+                });
+                var data = await resp.json();
+                if (data.ok) {
+                    window.location.href = data.redirect || "/";
+                } else {
+                    showError("login-error", data.msg || "登录失败");
+                    setBusy(btn, false);
+                }
+            } catch (err) {
+                showError("login-error", "网络错误：" + err.message);
+                setBusy(btn, false);
+            }
+        }
+
+        // ---- 找回密码面板 ----
+        function showResetPanel() {
+            document.getElementById("panel-login").classList.add("hidden");
+            document.getElementById("panel-reset").classList.remove("hidden");
+        }
+        function showLoginPanel() {
+            document.getElementById("panel-reset").classList.add("hidden");
+            document.getElementById("panel-login").classList.remove("hidden");
+        }
+
+        async function getResetCode() {
+            hideError("reset-error");
+            document.getElementById("reset-info").classList.add("hidden");
+            var btn = document.getElementById("get-code-btn");
+            setBusy(btn, true);
+            try {
+                var resp = await fetch("/api/auth/request_reset", { method: "POST" });
+                var data = await resp.json();
+                var info = document.getElementById("reset-info");
+                info.textContent = data.msg;
+                info.classList.remove("hidden");
+                if (!data.ok) { info.className = "text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2"; }
+                else { info.className = "text-xs text-navy-600 bg-navy-50 border border-navy-100 rounded-md px-3 py-2"; }
+            } catch (err) {
+                showError("reset-error", "网络错误：" + err.message);
+            } finally {
+                setBusy(btn, false);
+            }
+        }
+
+        async function submitReset() {
+            hideError("reset-error");
+            var code = document.getElementById("reset-code").value.trim();
+            var p1 = document.getElementById("new-password").value;
+            var p2 = document.getElementById("new-password2").value;
+            if (p1 !== p2) { showError("reset-error", "两次输入的新密码不一致"); return; }
+            if (p1.length < 6) { showError("reset-error", "新密码至少 6 位"); return; }
+
+            var btn = document.getElementById("reset-btn");
+            setBusy(btn, true);
+            try {
+                var resp = await fetch("/api/auth/reset", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code: code, new_password: p1 }),
+                });
+                var data = await resp.json();
+                if (data.ok) {
+                    alert("✅ " + data.msg + "，点击确定后使用新密码登录");
+                    showLoginPanel();
+                } else {
+                    showError("reset-error", data.msg || "重置失败");
+                }
+            } catch (err) {
+                showError("reset-error", "网络错误：" + err.message);
+            } finally {
+                setBusy(btn, false);
+            }
+        }
+    </script>
+</body>
+</html>

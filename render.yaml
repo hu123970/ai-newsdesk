@@ -1,0 +1,24 @@
+# =========================================================
+# Render Blueprint —— 一键部署免费版
+# 用法：Render 控制台 → New → Blueprint → 选中本仓库 → Apply
+# 说明：不想用 Blueprint 也可以手动 New → Web Service（Runtime 选 Docker）
+# =========================================================
+services:
+  - type: web
+    name: ai-newsdesk
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore          # 离国内近；也可改 oregon / frankfurt
+    healthCheckPath: /login
+    autoDeploy: true
+    envVars:
+      # 会话签名密钥：由 Render 自动生成随机值，重启不会把所有人踢下线
+      - key: SESSION_SECRET
+        generateValue: true
+      # 页面标题（浏览器标签 / 页脚）
+      - key: APP_TITLE
+        value: AI 行业动态聚合
+      # 线上演示不需要每小时采集：只在凌晨 4 点跑一次，避免演示时打扰
+      - key: COLLECT_CRON_HOURS
+        value: "4"

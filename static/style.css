@@ -1,0 +1,624 @@
+/*
+=========================================================
+AI NewsDesk · AI 行业动态聚合 —— 主题样式
+=========================================================
+设计基调：简洁克制的高级感。
+  石板蓝（中性科技色）为主色，白卡片 + 发丝细线，
+  大量留白、细腻动效，传递专业 / 可靠 / 高级感。
+=========================================================
+*/
+
+/* ====== 品牌色板 ====== */
+:root {
+    /* 石板蓝（中性科技色，不绑定任何企业 VI） */
+    --navy-900: #0F172A;
+    --navy-800: #1E293B;
+    --navy-700: #334155;
+    --navy-600: #475569;
+    --navy-500: #64748B;
+    --navy-400: #94A3B8;
+    --navy-300: #CBD5E1;
+    --navy-200: #E2E8F0;
+    --navy-100: #F1F5F9;
+    --navy-50:  #F8FAFC;
+
+    /* 中性色 */
+    --ink:        #1C2431;  /* 正文 */
+    --ink-soft:   #5A6B85;  /* 次级文字 */
+    --ink-faint:  #98A6BC;  /* 弱文字 / 标签 */
+    --line:       #E6EAF2;  /* 发丝线 */
+    --bg:         #F6F8FB;  /* 页面底色 */
+}
+
+/* ====== 页面基础 ====== */
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background-color: var(--bg);
+    color: var(--ink);
+}
+
+/* ====== 顶部品牌条（3px 石板蓝渐变） ====== */
+.brand-bar {
+    height: 3px;
+    background: linear-gradient(90deg, var(--navy-900) 0%, var(--navy-700) 45%, var(--navy-500) 100%);
+}
+
+/* ====== 通用面板 ====== */
+.panel {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+
+/* ====== 筛选字段标签 ====== */
+.field-label {
+    font-size: .72rem;
+    letter-spacing: .04em;
+    color: var(--ink-faint);
+    margin-bottom: .4rem;
+}
+
+/* ====== 筛选 pill ====== */
+.filter-pill { transition: all .18s ease; }
+.filter-pill-active {
+    background: var(--navy-700);
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(22, 33, 59, .28);
+}
+.filter-pill-active:hover { background: var(--navy-800); }
+.filter-inactive {
+    background: #EEF1F7;
+    color: var(--ink-soft);
+}
+.filter-inactive:hover { background: #E4E9F2; color: var(--navy-700); }
+
+/* ====== 按钮 ====== */
+.btn { transition: all .18s ease; cursor: pointer; }
+.btn-primary {
+    background: var(--navy-700);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .14);
+}
+.btn-primary:hover { background: var(--navy-800); }
+.btn-secondary {
+    background: #fff;
+    border: 1px solid var(--navy-200);
+    color: var(--navy-700);
+}
+.btn-secondary:hover { background: var(--navy-50); border-color: var(--navy-300); }
+.btn-soft {
+    background: var(--navy-50);
+    border: 1px solid var(--navy-200);
+    color: var(--navy-700);
+}
+.btn-soft:hover { background: var(--navy-100); border-color: var(--navy-300); }
+
+/* ====== 输入框 ====== */
+.input-field {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+.input-field:focus {
+    outline: none;
+    border-color: var(--navy-400);
+    box-shadow: 0 0 0 3px rgba(43, 63, 93, .12);
+}
+/* readonly 仅用于阻止浏览器自动填充，视觉保持可编辑态 */
+.input-field[readonly] {
+    background: #fff;
+    color: inherit;
+    cursor: text;
+}
+
+/* ====== 日期输入框：空值时隐藏 yyyy/mm/dd 提示（保留日历图标） ======
+   空值（未选择日期）时由模板/JS 给输入框加 .date-empty，
+   把显示区域变透明；选择日期后移除该类，值正常显示。
+   （不能用 :invalid——input 没有 required 时空值也算"有效"。） */
+input[type="date"].date-empty::-webkit-datetime-edit,
+input[type="date"].date-empty::-webkit-datetime-edit-fields-wrapper {
+    color: transparent;
+}
+
+/* ====== 动态卡片 ====== */
+.item-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    transition: box-shadow .25s ease, transform .2s ease, border-color .25s ease;
+    /* 逐条错峰入场（--i 由模板按序号注入） */
+    animation: card-in .45s ease both;
+    animation-delay: calc(var(--i, 0) * 28ms);
+}
+@keyframes card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+}
+.item-card:hover {
+    box-shadow: 0 8px 24px rgba(22, 33, 59, .08);
+    transform: translateY(-2px);
+    border-color: var(--navy-200);
+}
+@media (prefers-reduced-motion: reduce) {
+    .item-card, .report-card { animation: none; }
+}
+
+/* ====== 领域标签（呼应主题的低饱和色） ====== */
+.category-tag {
+    font-size: .7rem;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+.category-ai_model      { background: #DDE9F7;        color: #1D4E89; }
+.category-data_labeling { background: #DDF0EC;        color: #0F6B5C; }
+.category-embodied_ai   { background: #F9EBD9;        color: #96620F; }
+
+/* ====== 公司标签 pill ====== */
+.company-tag {
+    font-size: .7rem;
+    line-height: 1;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background: var(--navy-50);
+    color: var(--navy-600);
+    border: 1px solid var(--navy-100);
+    white-space: nowrap;
+}
+/* 第 5 个及之后的公司：省略号 pill */
+.company-tag-more {
+    font-size: .7rem;
+    line-height: 1;
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background: #EEF1F7;
+    color: #8A97AD;
+    white-space: nowrap;
+    cursor: default;
+}
+
+/* ====== 关键词命中高亮（柔和下划线式） ====== */
+.hl {
+    background: linear-gradient(180deg, transparent 62%, #FDEEB7 62%);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+}
+
+/* ====== htmx 请求指示器：空闲时完全不占位 ======
+   默认 .htmx-indicator 仅 opacity:0（仍占布局空间），
+   会让「采集」按钮比「暂停」按钮宽。改为 display:none，
+   请求进行中（htmx 给元素加 .htmx-request）再显示。 */
+.htmx-indicator { display: none; }
+.htmx-indicator.htmx-request { display: inline-flex; }
+
+/* ====== 操作反馈条淡出 ====== */
+.feedback-fade { animation: fade-out 3s ease forwards; }
+@keyframes fade-out {
+    0%   { opacity: 1; }
+    70%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* ====== 分页输入 ====== */
+.page-input:focus {
+    outline: none;
+    border-color: var(--navy-400);
+    box-shadow: 0 0 0 3px rgba(43, 63, 93, .12);
+}
+
+/* ====== 滚动条（精致化） ====== */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+    background: var(--navy-200);
+    border-radius: 8px;
+    border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--navy-300); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ====== 移动端适配 ====== */
+@media (max-width: 640px) {
+    .item-card { padding: 12px; }
+    .category-tag,
+    .company-tag,
+    .company-tag-more { font-size: .6rem; }
+}
+
+/* ====== 侧边栏导航（固定左侧，石板蓝渐变） ====== */
+.sidebar {
+    position: fixed;
+    top: 0; bottom: 0; left: 0;
+    width: 232px;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, var(--navy-800) 0%, var(--navy-700) 100%);
+    color: rgba(255, 255, 255, .78);
+    z-index: 30;
+}
+.sidebar-brand {
+    display: block;
+    padding: 1.15rem 1.1rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+}
+.sidebar-logo {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.sidebar-nav {
+    padding: .9rem .75rem;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+.sidebar-nav-label {
+    font-size: .66rem;
+    color: rgba(255, 255, 255, .4);
+    letter-spacing: .12em;
+    padding: .35rem .65rem .5rem;
+}
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem .65rem;
+    border-radius: 8px;
+    font-size: .88rem;
+    color: var(--navy-300);          /* 未选中：浅灰蓝，弱于白色 */
+    position: relative;
+    transition: background .16s, color .16s;
+}
+.sidebar-link:hover { background: #27365A; color: #fff; }
+.sidebar-link-active {
+    background: #2C3A59;              /* 选中：同色相提亮一档，非白框 */
+    color: #fff;
+    font-weight: 600;
+}
+.sidebar-link-active::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 58%;
+    border-radius: 3px;
+    background: #6E8BFF;              /* 唯一强调色，竖条提示选中 */
+}
+.sidebar-link-icon {
+    width: 1.15rem;
+    text-align: center;
+    font-size: .95rem;
+}
+
+.sidebar-flex { flex: 1; }
+
+/* AI 就绪状态（侧边栏底部，可点击进设置） */
+.ai-status {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0 .75rem .75rem;
+    padding: .5rem .7rem;
+    border-radius: 8px;
+    font-size: .78rem;
+    color: rgba(255, 255, 255, .78);
+    border: 1px solid rgba(255, 255, 255, .12);
+    background: none;
+    cursor: pointer;
+    transition: background .16s;
+}
+.ai-status:hover { background: rgba(255, 255, 255, .06); }
+.ai-status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.ai-status-ok .ai-status-dot {
+    background: #34D399;
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, .18);
+}
+.ai-status-warn .ai-status-dot {
+    background: #FBBF24;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, .18);
+}
+.ai-status-gear { margin-left: auto; opacity: .7; }
+
+/* 用户区 */
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .8rem 1.1rem;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+.sidebar-avatar {
+    flex-shrink: 0;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--navy-500), var(--navy-800));
+    border: 1px solid rgba(255, 255, 255, .25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #fff;
+}
+.sidebar-user-info { flex: 1; min-width: 0; }
+.sidebar-user-name {
+    font-size: .82rem;
+    font-weight: 600;
+    color: #fff;
+}
+.sidebar-user-role {
+    font-size: .66rem;
+    color: rgba(255, 255, 255, .45);
+}
+.sidebar-user-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: .2rem;
+    font-size: .9rem;
+    color: rgba(255, 255, 255, .6);
+    transition: color .15s;
+}
+.sidebar-user-btn:hover { color: #fff; }
+
+/* ====== 主区域（侧边栏右侧） ====== */
+.main-wrap {
+    margin-left: 232px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* 顶栏 */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .7rem 1.5rem;
+    background: rgba(255, 255, 255, .86);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+}
+.topbar-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--navy-800);
+    letter-spacing: .01em;
+}
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+}
+.topbar-stat {
+    font-size: .8rem;
+    color: var(--ink-faint);
+}
+
+.main-content {
+    flex: 1;
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+.site-footer {
+    text-align: center;
+    font-size: .72rem;
+    padding: 1rem 1rem 1.6rem;
+    color: var(--ink-faint);
+}
+
+/* 移动端：侧边栏收起为顶部横排导航 */
+@media (max-width: 767px) {
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+    }
+    .sidebar-brand { padding: .7rem 1rem; }
+    .sidebar-logo { width: auto; height: 34px; }
+    .sidebar-nav {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: .3rem .6rem .7rem;
+    }
+    .sidebar-nav-label,
+    .sidebar-flex,
+    .ai-status,
+    .sidebar-user { display: none; }
+    .sidebar-link { flex-shrink: 0; }
+    .sidebar-link-active::before { display: none; }
+    .main-wrap { margin-left: 0; }
+    .topbar { padding: .6rem 1rem; }
+    .main-content { padding: 1rem; }
+}
+
+/* ====== 日报卡片 ====== */
+/* 白底+色块提亮（2026-08-12，同事反馈页面整体偏灰）：
+   卡片改纯白底 + 发丝边框/浅阴影，从浅灰页面背景上"跳"出来。 */
+.report-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    transition: box-shadow .25s ease, transform .2s ease, border-color .25s ease;
+    /* 与新闻卡片一致的逐条错峰入场（--i 由模板按序号注入） */
+    animation: card-in .45s ease both;
+    animation-delay: calc(var(--i, 0) * 28ms);
+}
+.report-card:hover {
+    box-shadow: 0 8px 24px rgba(22, 33, 59, .08);
+    transform: translateY(-2px);
+    border-color: var(--navy-200);
+}
+/* 日报卡片展开/收起按钮（2026-08-17）：浅色描边小胶囊，悬浮变深 */
+.report-toggle-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .25rem .7rem;
+    font-size: .72rem;
+    color: var(--navy-600);
+    background: var(--navy-50);
+    border: 1px solid var(--navy-200);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all .18s ease;
+    white-space: nowrap;
+}
+.report-toggle-btn:hover {
+    background: var(--navy-100);
+    border-color: var(--navy-300);
+    color: var(--navy-800);
+}
+.report-section-title {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--navy-600);
+    letter-spacing: .05em;
+}
+.report-event-item {
+    border-left: 3px solid var(--navy-200);
+    padding-left: .75rem;
+    margin-top: .5rem;
+}
+/* 卡片式分点（2026-08-12）：影响分析/战略意义/趋势观察 的「小标题+阐述」要点 */
+.report-point-item {
+    border-left: 3px solid var(--navy-300);
+    padding-left: .75rem;
+    margin-top: .6rem;
+}
+.report-point-title {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--navy-700);
+    margin-bottom: .15rem;
+}
+.report-trend-note {
+    background: #FFF7ED;   /* orange-50（2026-08-12 提亮：原为 navy 渐变浅色） */
+    border-radius: .5rem;
+    padding: .6rem .75rem;
+}
+
+/* 三块分析区色块（2026-08-12，同事反馈偏灰后的提亮）：
+   影响分析=淡蓝、战略意义=淡绿、趋势观察=淡橙，
+   块内小标题与左边线随块上色，替代原 navy 灰调。 */
+.block-impact   { background: #EFF6FF; }                              /* sky-50     */
+.block-impact   .report-section-title { color: #0369A1; }             /* sky-700    */
+.block-impact   .report-point-item    { border-left-color: #7DD3FC; } /* sky-300    */
+.block-impact   .report-point-title   { color: #0369A1; }
+.block-strategy { background: #ECFDF5; }                              /* emerald-50 */
+.block-strategy .report-section-title { color: #047857; }             /* emerald-700 */
+.block-strategy .report-point-item    { border-left-color: #6EE7B7; } /* emerald-300 */
+.block-strategy .report-point-title   { color: #047857; }
+.block-trend    .report-section-title { color: #C2410C; }             /* orange-700 */
+.block-trend    .report-point-item    { border-left-color: #FDBA74; } /* orange-300 */
+.block-trend    .report-point-title   { color: #C2410C; }
+
+/* 核心结论 / 重点事件 也上色（2026-08-12，同事要求与三块分析区一致）：
+   核心结论=琥珀金（「高亮结论」感）、重点事件=紫罗兰，与 蓝/绿/橙 区分开。 */
+.block-summary  { background: #FFFBEB; }                            /* amber-50  */
+.block-summary  .report-section-title { color: #B45309; }           /* amber-700 */
+.block-events   { background: #F5F3FF; }                            /* violet-50 */
+.block-events   .report-section-title { color: #6D28D9; }           /* violet-700 */
+.block-events   .report-event-item    { border-left-color: #C4B5FD; } /* violet-300 */
+.block-events   .report-event-title   { color: #6D28D9; }
+
+/* ====== RAG 问答 ====== */
+.qa-answer p { margin-bottom: .5rem; }
+.qa-answer a { color: var(--navy-600); text-decoration: underline; }
+
+/* 参考资料：每个独立一行，编号徽标 + 标题 + 时间来源 */
+.qa-ref-row {
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+    padding: .55rem .75rem;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.qa-ref-row:hover {
+    border-color: var(--navy-300);
+    box-shadow: 0 2px 12px rgba(22, 33, 59, .07);
+    transform: translateY(-1px);
+}
+.qa-ref-index {
+    flex-shrink: 0;
+    width: 1.4rem; height: 1.4rem;
+    border-radius: 50%;
+    background: var(--navy-700);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: .05rem;
+}
+.qa-ref-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .12rem;
+}
+.qa-ref-title {
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--navy-800);
+    line-height: 1.35;
+    word-break: break-word;
+}
+.qa-ref-row:hover .qa-ref-title { color: var(--navy-600); }
+.qa-ref-meta {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    flex-wrap: wrap;
+    font-size: .7rem;
+    color: var(--ink-faint);
+}
+.qa-ref-kind {
+    font-size: .66rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--navy-50);
+    color: var(--navy-600);
+    border: 1px solid var(--navy-100);
+}
+
+/* ====== 登录页：身份选择（管理员 / 用户） ====== */
+.role-btn {
+    padding: .5rem .75rem;
+    font-size: .82rem;
+    border-radius: 8px;
+    border: 1px solid var(--navy-200);
+    background: #fff;
+    color: var(--navy-600);
+    cursor: pointer;
+    transition: all .18s ease;
+}
+.role-btn:hover { border-color: var(--navy-300); background: var(--navy-50); }
+.role-btn-active {
+    background: var(--navy-700);
+    border-color: var(--navy-700);
+    color: #fff;
+    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .14);
+}
+.role-btn-active:hover { background: var(--navy-800); border-color: var(--navy-800); }

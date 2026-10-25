@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_title }}{% endblock %}</title>
+
+    <!-- Tailwind CSS（从 CDN 加载） -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // 注册品牌中性色板（石板蓝，科技感 + 高级感）
+        tailwind.config = {
+            theme: { extend: { colors: {
+                navy: {
+                    50:  '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0',
+                    300: '#CBD5E1', 400: '#94A3B8', 500: '#64748B',
+                    600: '#475569', 700: '#334155', 800: '#1E293B', 900: '#0F172A',
+                }
+            }}}
+        };
+    </script>
+
+    <!-- 品牌主题样式 -->
+    <link rel="stylesheet" href="/static/style.css">
+
+    <!-- HTMX（无刷新交互） -->
+    <script src="https://unpkg.com/htmx.org@2.0.0"></script>
+
+    <style>
+        /* HTMX 加载中动画 */
+        .htmx-indicator { opacity: 0; transition: opacity 0.2s; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+        .htmx-request.htmx-indicator { opacity: 1; }
+
+        /* 按钮加载态 */
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+    </style>
+
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+
+    <!-- ============ 侧边栏导航（固定左侧，石板蓝渐变） ============ -->
+    <aside class="sidebar">
+
+        <!-- 品牌（透明底浅色字 logo，直接浮在深色渐变上；logo 内已含副标；纯展示，点击不跳转） -->
+        <div class="sidebar-brand">
+            <img src="/static/logo-light.png" alt="AI NewsDesk" class="sidebar-logo">
+        </div>
+
+        <!-- 导航 -->
+        <nav class="sidebar-nav">
+            <div class="sidebar-nav-label">工作台</div>
+            <a href="/" class="sidebar-link {% if active_tab | default('news') == 'news' %}sidebar-link-active{% endif %}">
+                <span class="sidebar-link-icon">📰</span>
+                <span>新闻动态</span>
+            </a>
+            <a href="/reports" class="sidebar-link {% if active_tab | default('news') == 'reports' %}sidebar-link-active{% endif %}">
+                <span class="sidebar-link-icon">📄</span>
+                <span>每日日报</span>
+            </a>
+            <a href="/qa" class="sidebar-link {% if active_tab | default('news') == 'qa' %}sidebar-link-active{% endif %}">
+                <span class="sidebar-link-icon">💬</span>
+                <span>问答助手</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-flex"></div>
+
+        <!-- AI 状态（纯展示，不弹设置窗口；设置入口在用户区 ⚙️；今日成本达上限时显示「已暂停」） -->
+        <div class="ai-status {% if llm_cost_blocked | default(false) %}ai-status-warn{% elif has_api_key | default(false) %}ai-status-ok{% else %}ai-status-warn{% endif %}"
+             title="AI 服务状态">
+            <span class="ai-status-dot"></span>
+            <span>{% if llm_cost_blocked | default(false) %}今日已暂停（成本上限）{% elif has_api_key | default(false) %}AI 就绪{% else %}AI 待配置{% endif %}</span>
+        </div>
+
+        <!-- 用户区：名字/角色/头像来自登录身份；⚙️ 仅管理员可见 -->
+        <div class="sidebar-user">
+            <div class="sidebar-avatar">{{ (current_username | default('ai-news'))[0] }}</div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name">{{ current_username | default('ai-news') }}</div>
+                <div class="sidebar-user-role">{% if current_role | default('admin') == 'admin' %}管理员{% else %}用户{% endif %}</div>
+            </div>
+            {% if current_role | default('admin') == 'admin' %}
+            <button type="button" onclick="openSettingsModal()" class="sidebar-user-btn" title="系统设置">⚙️</button>
+            {% endif %}
+            <a href="#" onclick="logout(event)" class="sidebar-user-btn" title="退出登录">⏻</a>
+        </div>
+    </aside>
+
+    <!-- ============ 主区域 ============ -->
+    <div class="main-wrap">
+
+        <!-- 顶栏：页面标题 + 操作按钮（sticky） -->
+        <header class="topbar">
+            <h2 class="topbar-title">
+                {% if active_tab | default('news') == 'news' %}新闻动态
+                {% elif active_tab | default('news') == 'reports' %}每日日报
+                {% else %}问答助手{% endif %}
+            </h2>
+
+            <div class="topbar-actions">
+                {% if active_tab | default('news') == 'news' %}
+                <span class="topbar-stat">共 <span class="font-semibold text-navy-800">{{ total | default(0) }}</span> 条</span>
+                {% if current_role | default('admin') == 'admin' %}
+                <div class="flex items-center gap-2">
+                    <!-- 采集按钮 -->
+                    <button type="button" hx-post="/collect"
+                            hx-target="#action-feedback"
+                            hx-indicator="#collect-spinner"
+                            hx-disabled-elt="this"
+                            hx-on::after-request="if(event.detail.successful){setTimeout(function(){window.location.reload()},500)}"
+                            class="btn btn-secondary px-2.5 py-1 text-xs rounded-md flex items-center justify-center gap-1 min-w-[4.25rem] whitespace-nowrap">
+                        <span id="collect-spinner" class="htmx-indicator">
+                            <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        </span>
+                        🔄 采集
+                    </button>
+                    <!-- 定时采集开关：运行中显示「暂停」，暂停中显示「开始」 -->
+                    <div id="scheduler-btn-wrap">
+                        {% if scheduler_paused | default(false) %}
+                        <button hx-post="/api/scheduler/toggle" hx-target="#scheduler-btn-wrap" hx-swap="innerHTML"
+                                class="btn btn-primary px-2.5 py-1 text-xs rounded-md flex items-center justify-center gap-1 w-[4.25rem]">▶ 开始</button>
+                        {% else %}
+                        <button hx-post="/api/scheduler/toggle" hx-target="#scheduler-btn-wrap" hx-swap="innerHTML"
+                                class="btn btn-secondary px-2.5 py-1 text-xs rounded-md flex items-center justify-center gap-1 w-[4.25rem]">⏸ 暂停</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% elif active_tab | default('news') == 'reports' %}
+                {% if current_role | default('admin') == 'admin' %}
+                <div class="flex items-center gap-2">
+                    <!-- 手动生成日报：生成当日各领域日报并群发钉钉；当日已补全（各领域都有）则禁用 -->
+                    <div id="report-btn-wrap">
+                        {% if report_day_complete | default(false) %}
+                        <button disabled class="btn btn-secondary px-2.5 py-1 text-xs rounded-md flex items-center justify-center gap-1 opacity-60 cursor-not-allowed">✅ 今日已生成</button>
+                        {% else %}
+                        <button hx-post="/api/reports/generate" hx-target="#report-btn-wrap" hx-swap="innerHTML" hx-indicator="#report-spinner" hx-disabled-elt="this"
+                                hx-on::after-request="if(event.detail.successful){setTimeout(function(){window.location.reload()},500)}"
+                                class="btn btn-primary px-2.5 py-1 text-xs rounded-md flex items-center justify-center gap-1 min-w-[5.5rem] whitespace-nowrap">
+                            <span id="report-spinner" class="htmx-indicator">
+                                <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            </span>
+                            📄 生成日报
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- 操作反馈条 -->
+        <div id="action-feedback" class="text-center text-xs py-1"></div>
+
+        <!-- ============ 主内容区 ============ -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- ============ 底部信息 ============ -->
+        <footer class="site-footer">
+            <div class="w-16 h-0.5 mx-auto mb-2 rounded"
+                 style="background: linear-gradient(90deg, var(--navy-700), var(--navy-400));"></div>
+            <p>{{ app_title }} · v0.3.0</p>
+            <p class="mt-1" style="color: var(--navy-500); letter-spacing: .2em;">AI NEWSDESK</p>
+        </footer>
+    </div>
+
+    <!-- ============ 设置弹窗（系统设置：API Key / 钉钉群 / 监控公司 / 修改密码） ============ -->
+    <div id="settings-modal" class="fixed inset-0 z-50 hidden">
+        <!-- 半透明遮罩，点击关闭 -->
+        <div class="absolute inset-0 bg-navy-900/40" onclick="closeSettingsModal()"></div>
+
+        <!-- 弹窗主体 -->
+        <div class="relative mx-auto mt-8 w-full max-w-2xl bg-white rounded-xl shadow-xl p-6 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-navy-800">⚙️ 系统设置</h2>
+                <button type="button" onclick="closeSettingsModal()" class="text-navy-300 hover:text-navy-600 text-2xl leading-none" title="关闭">×</button>
+            </div>
+
+            <!-- 操作反馈条 -->
+            <div id="settings-feedback" class="text-sm mb-3"></div>
+
+            <!-- 1. AI 模型（供应商） -->
+            <div class="mb-6">
+                <div class="text-sm font-medium text-navy-800 mb-2">🤖 AI 模型（供应商）</div>
+                <div class="flex items-center gap-2 mb-2">
+                    <select id="llm-provider-select" onchange="onProviderChange()"
+                            class="input-field flex-1 px-3 py-1.5 text-sm bg-white">
+                        <option value="">加载中...</option>
+                    </select>
+                    <button type="button" onclick="testKey()"
+                            class="btn btn-soft px-3 py-1.5 text-sm rounded-md">测试连接</button>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-20 flex-none text-xs text-navy-500">API Key</span>
+                        <input id="llm-key-input" type="password" placeholder="输入 Key（留空保持不变）" autocomplete="off"
+                               class="input-field flex-1 px-3 py-1.5 text-sm" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-20 flex-none text-xs text-navy-500">Base URL</span>
+                        <input id="llm-base-url-input" type="text" placeholder="OpenAI 兼容接口地址" autocomplete="off"
+                               class="input-field flex-1 px-3 py-1.5 text-sm" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="w-20 flex-none text-xs text-navy-500">Model</span>
+                        <input id="llm-model-input" type="text" placeholder="模型名；豆包填火山方舟接入点 ID（ep-xxx）" autocomplete="off"
+                               class="input-field flex-1 px-3 py-1.5 text-sm" />
+                    </div>
+                </div>
+                <div id="current-key-masked" class="text-xs text-navy-400 mt-2"></div>
+                <div class="text-xs text-navy-400 mt-1">
+                    ⚠️ Key 只显示打码值；下拉切换「当前使用」的供应商，保存后生效；豆包需先在火山方舟控制台创建推理接入点。
+                </div>
+                <div class="mt-2 text-xs">
+                    <span class="text-navy-500">今日 LLM 用量：</span>
+                    <span id="llm-cost-today" class="font-semibold text-navy-700">¥0.00 / ¥1</span>
+                    <span class="text-navy-400 ml-1">（达上限当日自动暂停，次日恢复）</span>
+                </div>
+            </div>
+
+            <!-- 2. 钉钉群（群发） -->
+            <div class="mb-6">
+                <div class="text-sm font-medium text-navy-800 mb-2">📨 钉钉群（机器人同时推送到以下所有群）</div>
+                <div id="webhook-rows" class="space-y-2"></div>
+                <div class="flex gap-2 mt-2">
+                    <button type="button" onclick="addWebhookRow()"
+                            class="btn btn-soft px-3 py-1.5 text-sm rounded-md">+ 添加群</button>
+                    <button type="button" onclick="testAllWebhooks()"
+                            class="btn btn-soft px-3 py-1.5 text-sm rounded-md">发送测试消息到全部群</button>
+                </div>
+            </div>
+
+            <!-- 3. 监控公司 -->
+            <div class="mb-6">
+                <div class="text-sm font-medium text-navy-800 mb-2">🏢 监控公司（采集预筛 + LLM 分析都按此列表执行）</div>
+                <div id="company-rows" class="space-y-2"></div>
+                <button type="button" onclick="addCompanyRow()"
+                        class="btn btn-soft mt-2 px-3 py-1.5 text-sm rounded-md">+ 添加公司</button>
+            </div>
+
+            <!-- 4. 修改密码 -->
+            <div class="mb-6">
+                <div class="text-sm font-medium text-navy-800 mb-2">🔒 修改登录密码</div>
+                <div class="flex gap-2">
+                    <input id="old-password-input" type="password" placeholder="旧密码"
+                           class="input-field w-32 px-3 py-1.5 text-sm" />
+                    <input id="new-password-input" type="password" placeholder="新密码（至少 6 位）"
+                           class="input-field flex-1 px-3 py-1.5 text-sm" />
+                    <button type="button" onclick="changePassword()"
+                            class="btn btn-soft px-3 py-1.5 text-sm rounded-md">修改</button>
+                </div>
+                <div class="text-xs text-navy-400 mt-1">⚠️ 修改成功后需要重新登录，所有浏览器会话都会失效</div>
+            </div>
+
+            <!-- 5. 用户（staff）密码：管理员可改普通用户的登录密码 -->
+            <div class="mb-6">
+                <div class="text-sm font-medium text-navy-800 mb-2">👤 用户（staff）密码</div>
+                <div class="flex gap-2">
+                    <input id="user-new-password-input" type="password" placeholder="新密码（至少 6 位）"
+                           class="input-field flex-1 px-3 py-1.5 text-sm" />
+                    <button type="button" onclick="changeUserPassword()"
+                            class="btn btn-soft px-3 py-1.5 text-sm rounded-md">修改</button>
+                </div>
+                <div class="text-xs text-navy-400 mt-1">设置普通用户 staff 的登录密码；修改后该身份的旧会话全部失效</div>
+            </div>
+
+            <!-- 保存 / 取消 -->
+            <div class="flex justify-end gap-2 border-t border-navy-50 pt-4">
+                <button type="button" onclick="closeSettingsModal()"
+                        class="btn btn-secondary px-4 py-2 text-sm rounded-md">取消</button>
+                <button type="button" onclick="saveSettings()"
+                        class="btn btn-primary px-4 py-2 text-sm rounded-md">💾 保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 设置弹窗脚本 + 账户操作 ============ -->
+    <script>
+        // ---------- 弹窗开关 ----------
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            loadSettings();
+        }
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        // 按 Esc 关闭
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeSettingsModal();
+        });
+
+        // ---------- 反馈提示 ----------
+        function showFeedback(msg, ok) {
+            const el = document.getElementById('settings-feedback');
+            el.className = 'text-sm mb-3 ' + (ok ? 'text-green-600' : 'text-red-600');
+            el.textContent = msg;
+            clearTimeout(window._fbTimer);
+            window._fbTimer = setTimeout(function () { el.textContent = ''; }, 5000);
+        }
+
+        // ---------- 加载当前设置 ----------
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const data = await res.json();
+                // 供应商列表 + 当前使用（全局缓存供 onProviderChange 取配置）
+                window._llmProviders = data.llm_providers || {};
+                renderProviderSelect(window._llmProviders, data.llm_provider || '');
+                // 今日用量（只读）
+                const cost = data.llm_cost_today;
+                document.getElementById('llm-cost-today').textContent =
+                    '¥' + (typeof cost === 'number' ? cost.toFixed(2) : '0.00') + ' / ¥1';
+                renderWebhooks(data.webhooks || []);
+                renderCompanies(data.companies || []);
+            } catch (e) {
+                showFeedback('❌ 加载设置失败：' + e.message, false);
+            }
+        }
+
+        // ---------- 供应商下拉 ----------
+        function renderProviderSelect(providers, active) {
+            const sel = document.getElementById('llm-provider-select');
+            sel.innerHTML = '';
+            Object.keys(providers).forEach(function (key) {
+                const p = providers[key] || {};
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = (p.label || key) + (key === active ? '（当前）' : '');
+                if (key === active) { opt.selected = true; }
+                sel.appendChild(opt);
+            });
+            applyProviderFields(providers, sel.value);
+        }
+        // 把某家供应商的配置填入下面三个输入框 + 打码 Key 回显
+        function applyProviderFields(providers, key) {
+            const p = (providers && providers[key]) || {};
+            document.getElementById('llm-key-input').value = '';
+            document.getElementById('llm-base-url-input').value = p.base_url || '';
+            document.getElementById('llm-model-input').value = p.model || '';
+            document.getElementById('current-key-masked').textContent =
+                '当前 Key：' + (p.masked_key || '未配置');
+        }
+        // 下拉切换：提示当前选中，载入该家已保存配置（尚未保存，需点「保存」生效）
+        function onProviderChange() {
+            const sel = document.getElementById('llm-provider-select');
+            applyProviderFields(window._llmProviders, sel.value);
+            showFeedback('已选择：' + (sel.selectedOptions[0].textContent || sel.value) + '，点「保存」后生效', true);
+        }
+
+        // ---------- 钉钉群行 ----------
+        function webhookRowHtml() {
+            return `
+                <div class="flex gap-2 items-center">
+                    <input class="wh-row-name flex-none w-28 px-2 py-1.5 text-sm input-field" autocomplete="off" placeholder="群名称" />
+                    <input class="wh-row-url flex-1 px-2 py-1.5 text-sm input-field" autocomplete="off" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." />
+                    <button type="button" onclick="testWebhook(this)"
+                            class="btn btn-soft px-2 py-1.5 text-xs rounded-md">测试</button>
+                    <button type="button" onclick="this.parentElement.remove()"
+                            class="px-2 py-1.5 text-xs bg-red-50 border border-red-200 text-red-600 rounded-md hover:bg-red-100">删除</button>
+                </div>`;
+        }
+        function addWebhookRow() {
+            const box = document.getElementById('webhook-rows');
+            const div = document.createElement('div');
+            div.innerHTML = webhookRowHtml();
+            box.appendChild(div.firstElementChild);
+            return box.lastElementChild;
+        }
+        function renderWebhooks(webhooks) {
+            const box = document.getElementById('webhook-rows');
+            box.innerHTML = '';
+            if (!webhooks.length) { addWebhookRow(); return; }
+            webhooks.forEach(function (w) {
+                const row = addWebhookRow();
+                row.querySelector('.wh-row-name').value = w.name || '';
+                row.querySelector('.wh-row-url').value = w.url || '';
+            });
+        }
+
+        // ---------- 监控公司行 ----------
+        function companyRowHtml() {
+            return `
+                <div class="flex gap-2 items-center">
+                    <input class="cp-row-name flex-none w-32 px-2 py-1.5 text-sm input-field" autocomplete="off" placeholder="公司名（如：硅基流动）" />
+                    <select class="cp-row-category flex-none w-28 px-1 py-1.5 text-sm input-field bg-white">
+                        <option value="ai_model">AI大模型</option>
+                        <option value="data_labeling">数据标注</option>
+                        <option value="embodied_ai">具身智能</option>
+                    </select>
+                    <select class="cp-row-region flex-none w-20 px-1 py-1.5 text-sm input-field bg-white">
+                        <option value="china">国内</option>
+                        <option value="overseas">海外</option>
+                    </select>
+                    <input class="cp-row-keywords flex-1 px-2 py-1.5 text-sm input-field" autocomplete="off" placeholder="别名（逗号/顿号分隔，如：深度求索）" />
+                    <button type="button" onclick="this.parentElement.remove()"
+                            class="px-2 py-1.5 text-xs bg-red-50 border border-red-200 text-red-600 rounded-md hover:bg-red-100">删除</button>
+                </div>`;
+        }
+        function addCompanyRow() {
+            const box = document.getElementById('company-rows');
+            const div = document.createElement('div');
+            div.innerHTML = companyRowHtml();
+            box.appendChild(div.firstElementChild);
+            return box.lastElementChild;
+        }
+        function renderCompanies(companies) {
+            const box = document.getElementById('company-rows');
+            box.innerHTML = '';
+            if (!companies.length) { addCompanyRow(); return; }
+            companies.forEach(function (c) {
+                const row = addCompanyRow();
+                row.querySelector('.cp-row-name').value = c.name || '';
+                row.querySelector('.cp-row-category').value = c.category || 'ai_model';
+                row.querySelector('.cp-row-region').value = c.region || 'china';
+                row.querySelector('.cp-row-keywords').value = (c.keywords || []).join('、');
+            });
+        }
+
+        // ---------- 收集表单数据 ----------
+        function collectWebhooks() {
+            return Array.from(document.querySelectorAll('#webhook-rows > div')).map(function (row) {
+                return {
+                    name: row.querySelector('.wh-row-name').value.trim(),
+                    url: row.querySelector('.wh-row-url').value.trim(),
+                };
+            }).filter(function (w) { return w.url; });
+        }
+        function collectCompanies() {
+            return Array.from(document.querySelectorAll('#company-rows > div')).map(function (row) {
+                const kw = row.querySelector('.cp-row-keywords').value;
+                const keywords = kw.split(/[,，、]/).map(function (s) { return s.trim(); }).filter(Boolean);
+                return {
+                    name: row.querySelector('.cp-row-name').value.trim(),
+                    category: row.querySelector('.cp-row-category').value,
+                    region: row.querySelector('.cp-row-region').value,
+                    keywords: keywords,
+                };
+            }).filter(function (c) { return c.name; });
+        }
+
+        // ---------- 保存 ----------
+        async function saveSettings() {
+            const payload = {
+                llm_provider: document.getElementById('llm-provider-select').value,
+                api_key: document.getElementById('llm-key-input').value.trim(),
+                base_url: document.getElementById('llm-base-url-input').value.trim(),
+                model: document.getElementById('llm-model-input').value.trim(),
+                webhooks: collectWebhooks(),
+                companies: collectCompanies(),
+            };
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showFeedback(data.msg, true);
+                    // 重新加载（打码值回显 + 今日用量刷新）
+                    loadSettings();
+                } else {
+                    showFeedback(data.msg || '保存失败', false);
+                }
+            } catch (e) {
+                showFeedback('❌ 保存失败：' + e.message, false);
+            }
+        }
+
+        // ---------- 测试 API Key（当前选中供应商） ----------
+        async function testKey() {
+            const payload = {
+                provider: document.getElementById('llm-provider-select').value,
+                api_key: document.getElementById('llm-key-input').value.trim(),
+                base_url: document.getElementById('llm-base-url-input').value.trim(),
+                model: document.getElementById('llm-model-input').value.trim(),
+            };
+            showFeedback('⏳ 正在测试连接...', true);
+            try {
+                const res = await fetch('/api/settings/test_key', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                showFeedback(data.msg, data.ok);
+            } catch (e) {
+                showFeedback('❌ 测试失败：' + e.message, false);
+            }
+        }
+
+        // ---------- 测试单个 webhook ----------
+        async function testWebhook(btn) {
+            const row = btn.parentElement;
+            const url = row.querySelector('.wh-row-url').value.trim();
+            if (!url) { showFeedback('❌ 请先填写 webhook URL', false); return; }
+            showFeedback('⏳ 正在发送测试消息...', true);
+            try {
+                const res = await fetch('/api/settings/test_webhook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: url }),
+                });
+                const data = await res.json();
+                showFeedback(data.msg, data.ok);
+            } catch (e) {
+                showFeedback('❌ 测试失败：' + e.message, false);
+            }
+        }
+
+        // ---------- 发送测试消息到全部群（验证群发） ----------
+        async function testAllWebhooks() {
+            const webhooks = collectWebhooks();
+            if (!webhooks.length) { showFeedback('❌ 还没有可用的群 webhook', false); return; }
+            showFeedback('⏳ 正在向 ' + webhooks.length + ' 个群发送测试消息...', true);
+            let ok = 0, fail = 0;
+            for (const w of webhooks) {
+                try {
+                    const res = await fetch('/api/settings/test_webhook', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: w.url }),
+                    });
+                    const data = await res.json();
+                    if (data.ok) ok++; else fail++;
+                } catch (e) { fail++; }
+            }
+            showFeedback(ok > 0
+                ? '✅ 群发测试完成：成功 ' + ok + ' 个群' + (fail ? '，失败 ' + fail + ' 个' : '')
+                : '❌ 全部 ' + fail + ' 个群发送失败，请检查 URL', ok > 0);
+        }
+
+        // ---------- 修改密码（验证旧密码 → 服务端更新并清会话） ----------
+        async function changePassword() {
+            const oldPwd = document.getElementById('old-password-input').value;
+            const newPwd = document.getElementById('new-password-input').value;
+            if (!oldPwd || newPwd.length < 6) { showFeedback('❌ 请填写旧密码，新密码至少 6 位', false); return; }
+            showFeedback('⏳ 正在修改...', true);
+            try {
+                const res = await fetch('/api/auth/change_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_password: oldPwd, new_password: newPwd }),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert('✅ ' + data.msg + '，请使用新密码重新登录');
+                    window.location.href = '/login';
+                } else {
+                    showFeedback(data.msg || '修改失败', false);
+                }
+            } catch (e) {
+                showFeedback('❌ 修改失败：' + e.message, false);
+            }
+        }
+
+        // ---------- 修改用户（staff）密码 ----------
+        async function changeUserPassword() {
+            const newPwd = document.getElementById('user-new-password-input').value;
+            if (newPwd.length < 6) { showFeedback('❌ 新密码至少 6 位', false); return; }
+            showFeedback('⏳ 正在修改用户密码...', true);
+            try {
+                const res = await fetch('/api/auth/set_user_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_password: newPwd }),
+                });
+                const data = await res.json();
+                showFeedback(data.msg, data.ok);
+                if (data.ok) { document.getElementById('user-new-password-input').value = ''; }
+            } catch (e) {
+                showFeedback('❌ 修改失败：' + e.message, false);
+            }
+        }
+
+        // ---------- 退出登录 ----------
+        async function logout(e) {
+            e.preventDefault();
+            try {
+                await fetch('/logout', { method: 'POST' });
+            } catch (err) { /* 忽略 */ }
+            window.location.href = '/login';
+        }
+    </script>
+
+    {% block body_extra %}{% endblock %}
+
+</body>
+</html>

@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block title %}{{ app_title }} · 问答{% endblock %}
+
+{% block content %}
+
+    <!-- ====== 问答面板 ====== -->
+    <div class="panel p-4 mb-6">
+        <div class="mb-2">
+            <div class="field-label">💬 向我提问</div>
+            <p class="text-xs text-navy-400 mb-3">基于库内新闻与每日日报回答，答案末尾标注 [参考资料 N] 可点击跳转原文</p>
+        </div>
+        <textarea id="qa-input" rows="3" maxlength="200"
+                  placeholder="例如：DeepSeek 最近发布了什么？宇树科技有什么新进展？"
+                  class="input-field w-full px-3 py-2 text-sm resize-y"
+                  onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault();submitQuestion()}"></textarea>
+        <div class="flex items-center justify-between mt-3">
+            <span class="text-xs text-navy-300"><span id="qa-char-count">0</span> / 200</span>
+            <button id="qa-submit-btn" type="button" onclick="submitQuestion()"
+                    class="btn btn-primary px-5 py-2 text-sm rounded-md">提问</button>
+        </div>
+    </div>
+
+    <!-- 加载态 -->
+    <div id="qa-loading" class="hidden text-center text-navy-400 py-8">
+        <div class="inline-flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span>正在检索资料并生成回答…</span>
+        </div>
+    </div>
+
+    <!-- 错误提示 -->
+    <div id="qa-error" class="hidden bg-red-50 border border-red-200 text-red-600 rounded-lg p-4 text-sm mb-6"></div>
+
+    <!-- 回答区 -->
+    <div id="qa-result" class="hidden">
+        <div class="report-card rounded-lg p-5">
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <h2 class="text-[15px] font-semibold text-navy-900 leading-snug">回答</h2>
+                <button type="button" onclick="clearResult()"
+                        class="text-xs text-navy-400 hover:text-navy-700 whitespace-nowrap">✕ 清空</button>
+            </div>
+            <div id="qa-answer" class="qa-answer text-sm text-[var(--ink-soft)] leading-relaxed"></div>
+        </div>
+
+        <!-- 参考资料 -->
+        <div class="mt-4">
+            <div class="report-section-title mb-2">参考资料（<span id="qa-ref-count">0</span>）</div>
+            <div id="qa-refs" class="space-y-1.5"></div>
+        </div>
+    </div>
+
+    <!-- 空状态：尚无提问 -->
+    <div id="qa-empty" class="panel rounded-lg p-12 text-center">
+        <div class="text-5xl mb-4">💬</div>
+        <h2 class="text-lg font-semibold text-navy-800 mb-2">还没有提问</h2>
+        <p class="text-sm text-navy-500">在上方输入问题，系统会检索库内新闻与日报后给出带引用的回答。</p>
+    </div>
+
+    <script>
+        // ---------- 字数统计 ----------
+        var qaInput = document.getElementById('qa-input');
+        var qaCount = document.getElementById('qa-char-count');
+        qaInput.addEventListener('input', function () {
+            qaCount.textContent = qaInput.value.length;
+        });
+
+        // ---------- 提交提问 ----------
+        async function submitQuestion() {
+            var q = qaInput.value.trim();
+            if (!q) { return; }
+            if (q.length > 200) {
+                showQaError('问题过长（最多 200 字）');
+                return;
+            }
+            setLoading(true);
+            try {
+                var res = await fetch('/api/qa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: q }),
+                });
+                var data = await res.json();
+                if (!res.ok || !data.ok) {
+                    showQaError(data.error || data.msg || '请求失败');
+                    return;
+                }
+                renderResult(data);
+            } catch (e) {
+                showQaError('❌ 网络错误：' + e.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // ---------- 清理 LLM 输出里的 Markdown 符号（回答要干净，无 * # - 等） ----------
+        function cleanAnswerText(t) {
+            return (t || '')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')   // **加粗** → 加粗
+                .replace(/\*([^*\n]+)\*/g, '$1')      // *斜体* → 斜体
+                .replace(/^#{1,6}\s*/gm, '')          // ## 标题标记
+                .replace(/^\s*[-•·]\s+/gm, '')        // - / • / · 行首列表符
+                .replace(/\n{3,}/g, '\n\n');          // 折叠多余空行
+        }
+
+        // ---------- 渲染 ----------
+        function renderResult(data) {
+            document.getElementById('qa-error').classList.add('hidden');
+            // 答案先清 markdown 符号，再按空行分段
+            var answerEl = document.getElementById('qa-answer');
+            answerEl.innerHTML = '';
+            var paras = cleanAnswerText(data.answer).split(/\n{2,}/);
+            paras.forEach(function (p) {
+                if (!p.trim()) { return; }
+                // 单换行折叠成空格；[参考资料 N] 加粗
+                var line = p.replace(/\n+/g, ' ').replace(/\[参考资料\s*(\d+)\]/g, function (m, n) {
+                    return '<strong>[参考资料 ' + n + ']</strong>';
+                });
+                var para = document.createElement('p');
+                para.innerHTML = line;
+                answerEl.appendChild(para);
+            });
+
+            // 参考资料：每个独立一行，编号徽标 + 类型 + 标题 + 时间·来源
+            var refsEl = document.getElementById('qa-refs');
+            refsEl.innerHTML = '';
+            var refs = data.references || [];
+            document.getElementById('qa-ref-count').textContent = refs.length;
+            refs.forEach(function (r, i) {
+                var a = document.createElement('a');
+                a.className = 'qa-ref-row';
+                a.target = r.kind === 'news' ? '_blank' : '_self';
+                a.href = r.url || 'javascript:void(0)';
+
+                var idx = document.createElement('span');
+                idx.className = 'qa-ref-index';
+                idx.textContent = i + 1;
+
+                var main = document.createElement('span');
+                main.className = 'qa-ref-main';
+
+                var title = document.createElement('span');
+                title.className = 'qa-ref-title';
+                title.textContent = r.title || '(无标题)';
+
+                var meta = document.createElement('span');
+                meta.className = 'qa-ref-meta';
+                var kindLabel = r.kind === 'report' ? '📄 日报' : '📰 新闻';
+                var metaParts = ['<span class="qa-ref-kind">' + kindLabel + '</span>'];
+                if (r.date) { metaParts.push(r.date); }
+                if (r.source) { metaParts.push(r.source); }
+                meta.innerHTML = metaParts.join(' · ');
+
+                main.appendChild(title);
+                main.appendChild(meta);
+                a.appendChild(idx);
+                a.appendChild(main);
+                refsEl.appendChild(a);
+            });
+
+            document.getElementById('qa-empty').classList.add('hidden');
+            document.getElementById('qa-result').classList.remove('hidden');
+            document.getElementById('qa-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function clearResult() {
+            document.getElementById('qa-result').classList.add('hidden');
+            document.getElementById('qa-empty').classList.remove('hidden');
+            qaInput.value = '';
+            qaCount.textContent = '0';
+        }
+
+        function showQaError(msg) {
+            var el = document.getElementById('qa-error');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function setLoading(loading) {
+            document.getElementById('qa-loading').classList.toggle('hidden', !loading);
+            document.getElementById('qa-submit-btn').disabled = loading;
+            document.getElementById('qa-submit-btn').classList.toggle('btn-loading', loading);
+        }
+    </script>
+
+{% endblock %}

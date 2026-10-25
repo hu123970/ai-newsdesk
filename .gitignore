@@ -1,0 +1,32 @@
+# 环境变量（含 DeepSeek API Key / 钉钉 webhook token，切勿提交）
+.env
+
+# 数据目录：只把演示库随仓库发布（线上 demo 靠它开箱有内容），其余导出文件不入库
+data/*
+!data/ai_news.db
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 虚拟环境
+venv/
+.venv/
+
+# 编辑器/系统文件
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 本地文档与自检脚本（不进公开仓库，仅保留在本地）
+docs/
+scripts/
+
+# 运行时日志
+logs/
+uvicorn.log
+
+# 本地隧道 / 临时文件
+cloudflared*
+*.log

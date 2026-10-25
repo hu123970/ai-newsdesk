@@ -1,0 +1,19 @@
+# 不进入构建上下文的文件（减小镜像、避免泄露）
+.git
+.gitignore
+.env
+.env.*
+logs
+__pycache__
+*.py[cod]
+.venv
+venv
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+uvicorn.log
+# 文档与自检脚本不影响运行，按需保留可删掉这几行
+docs
+scripts
+*.md

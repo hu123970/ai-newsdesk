@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+{% block title %}{{ app_title }}{% endblock %}
+
+{% block content %}
+
+    <!-- ====== 筛选栏 ====== -->
+    <div class="panel p-4 mb-6">
+
+        <!-- 领域筛选（goFilter：只改本字段，保留关键词/日期/公司等其它筛选） -->
+        <div class="mb-3">
+            <div class="field-label">按领域</div>
+            <div class="flex flex-wrap gap-2">
+                <a href="javascript:void(0);" onclick="goFilter('category', '')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == '' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    全部
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('category', 'ai_model')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == 'ai_model' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    AI大模型
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('category', 'data_labeling')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == 'data_labeling' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    数据标注
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('category', 'embodied_ai')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_category == 'embodied_ai' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    具身智能
+                </a>
+            </div>
+        </div>
+
+        <!-- 地区筛选 -->
+        <div class="mb-3">
+            <div class="field-label">按地区</div>
+            <div class="flex flex-wrap gap-2">
+                <a href="javascript:void(0);" onclick="goFilter('region', '')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_region == '' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    全部地区
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('region', 'overseas')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_region == 'overseas' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    🌏 海外
+                </a>
+                <a href="javascript:void(0);" onclick="goFilter('region', 'china')"
+                   class="filter-pill px-3 py-1 text-sm rounded-full
+                          {% if current_region == 'china' %}filter-pill-active{% else %}filter-inactive{% endif %}">
+                    🇨🇳 国内
+                </a>
+            </div>
+        </div>
+
+        <!-- 公司 + 关键词筛选（同一行：两个文本框，goFilter 只改各自字段、保留其它筛选） -->
+        <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
+            <div>
+                <div class="field-label">按公司</div>
+                <div class="relative">
+                    <input type="text"
+                           id="company-search"
+                           list="company-list"
+                           placeholder="输入公司名称搜索..."
+                           value="{{ current_company }}"
+                           autocomplete="off"
+                           readonly
+                           onfocus="this.removeAttribute('readonly')"
+                           class="input-field w-full sm:w-56 px-3 py-1.5 text-sm placeholder:text-navy-200"
+                           onchange="goFilter('company_name', this.value)">
+                    {% if companies %}
+                    <datalist id="company-list">
+                        {% for company in companies %}
+                        <option value="{{ company }}">
+                        {% endfor %}
+                    </datalist>
+                    {% endif %}
+                    {% if current_company %}
+                    <a href="javascript:void(0);" onclick="goFilter('company_name', '')"
+                       class="absolute right-2 top-1/2 -translate-y-1/2 text-navy-300 hover:text-navy-600 text-sm">✕</a>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="field-label">关键词</div>
+                <div class="flex items-center gap-2">
+                    <input type="text"
+                           id="keyword-input"
+                           placeholder="搜索关键词（如：v4）..."
+                           value="{{ current_keyword }}"
+                           autocomplete="off"
+                           readonly
+                           onfocus="this.removeAttribute('readonly')"
+                           class="input-field w-full sm:w-56 px-3 py-1.5 text-sm placeholder:text-navy-200"
+                           onkeydown="if(event.key==='Enter'){goFilter('keyword', this.value.trim())}">
+                    <button type="button"
+                            onclick="goFilter('keyword', document.getElementById('keyword-input').value.trim())"
+                            class="btn btn-secondary px-3 py-1.5 text-sm rounded-md flex-shrink-0 whitespace-nowrap">搜索</button>
+                    {% if current_keyword %}
+                    <a href="javascript:void(0);" onclick="goFilter('keyword', '')"
+                       class="text-navy-300 hover:text-navy-600 text-sm">✕</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 日期范围筛选（独立一行：两个日期选择器 + 应用/清除） -->
+        <div class="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3">
+            <div>
+                <div class="field-label">按时间</div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="date" id="date-from" value="{{ current_date_from }}"
+                           class="input-field px-2 py-1.5 text-sm text-navy-800{% if not current_date_from %} date-empty{% endif %}">
+                    <span class="text-xs text-navy-300">至</span>
+                    <input type="date" id="date-to" value="{{ current_date_to }}"
+                           class="input-field px-2 py-1.5 text-sm text-navy-800{% if not current_date_to %} date-empty{% endif %}">
+                    <button type="button" onclick="applyDateFilter()"
+                            class="btn btn-primary px-3 py-1.5 text-sm rounded-md flex-shrink-0 whitespace-nowrap">应用</button>
+                    {% if current_date_from or current_date_to %}
+                    <button type="button" onclick="clearDateFilter()"
+                            class="px-2 py-1.5 text-sm text-navy-400 hover:text-navy-700 flex-shrink-0 whitespace-nowrap">✕ 清除</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // ---------- 筛选跳转工具：保留已有 URL 参数，只改/删一个字段 ----------
+        function goFilter(name, value) {
+            var params = new URLSearchParams(window.location.search);
+            params.delete('page');  // 切换条件回到第 1 页
+            if (value) { params.set(name, value); } else { params.delete(name); }
+            window.location.href = '?' + params.toString();
+        }
+        // ---------- 日期范围应用 / 清除 ----------
+        function applyDateFilter() {
+            var params = new URLSearchParams(window.location.search);
+            params.delete('page');
+            var from = document.getElementById('date-from').value;
+            var to = document.getElementById('date-to').value;
+            if (from) { params.set('date_from', from); } else { params.delete('date_from'); }
+            if (to) { params.set('date_to', to); } else { params.delete('date_to'); }
+            window.location.href = '?' + params.toString();
+        }
+        function clearDateFilter() {
+            var params = new URLSearchParams(window.location.search);
+            params.delete('page');
+            params.delete('date_from');
+            params.delete('date_to');
+            window.location.href = '?' + params.toString();
+        }
+        // ---------- 日期为空时隐藏 yyyy/mm/dd 占位提示（保留日历图标） ----------
+        // 选中日期 / 清空日期时同步 .date-empty 类，避免刚选的日期被 CSS 隐藏
+        function syncDateEmptyClass() {
+            document.querySelectorAll('input[type="date"]').forEach(function (el) {
+                el.classList.toggle('date-empty', !el.value);
+            });
+        }
+        document.querySelectorAll('input[type="date"]').forEach(function (el) {
+            el.addEventListener('input', syncDateEmptyClass);
+            el.addEventListener('change', syncDateEmptyClass);
+        });
+        syncDateEmptyClass();
+    </script>
+
+    <!-- ====== 动态列表 ====== -->
+    {% if has_items %}
+
+        <div class="space-y-2.5" id="item-list">
+
+            {% for item in items %}
+            <div class="item-card rounded-lg p-3" style="--i:{{ loop.index0 if loop.index0 < 12 else 12 }}">
+                <!-- Row1：标题(可点击跳原文) + meta 横排（领域标签 / 公司pill / 时间·来源） -->
+                <div class="flex items-start justify-between gap-3">
+                    <a href="{{ item.url }}" target="_blank" rel="noopener"
+                       class="flex-1 min-w-0 text-[15px] font-semibold text-navy-900 leading-snug hover:text-[#1E5EBB] hover:underline transition">
+                        {{ item.title | highlight(current_keyword) | safe }}
+                    </a>
+                    <div class="flex-shrink-0 max-w-[55%]">
+                        <div class="flex flex-wrap justify-end items-center gap-1 text-xs text-navy-400">
+                            <!-- 领域标签 -->
+                            <span class="category-tag category-{{ item.category }}">
+                                {% if item.category == 'ai_model' %}AI大模型
+                                {% elif item.category == 'data_labeling' %}数据标注
+                                {% elif item.category == 'embodied_ai' %}具身智能
+                                {% else %}其他{% endif %}
+                            </span>
+                            <!-- 公司标签：最多 4 个 pill，多余显示省略号（悬浮看全部） -->
+                            {% set raw = (item.company_name or '').strip() %}
+                            {% set cnames = raw.split('、') if raw else [] %}
+                            {% for c in cnames[:4] %}
+                            <span class="company-tag">{{ c }}</span>
+                            {% endfor %}
+                            {% if cnames|length > 4 %}
+                            <span class="company-tag-more" title="{{ item.company_name }}">…</span>
+                            {% endif %}
+                            <!-- 时间 · 来源 -->
+                            <span class="whitespace-nowrap">{{ item.published_at_str }} · {{ item.source_name }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row2：摘要 -->
+                {% if item.summary %}
+                <!-- 2026-08-18：去掉 line-clamp-2，摘要全文显示（移动端不截断） -->
+                <p class="text-sm text-[var(--ink-soft)] leading-relaxed mt-1">
+                    {{ item.summary | highlight(current_keyword) | safe }}
+                </p>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+        </div>
+
+        <!-- ====== 分页 ====== -->
+        {% if total_pages > 1 %}
+        <div class="flex items-center justify-center gap-2 mt-6">
+            {% if current_page > 1 %}
+            <a href="?page={{ current_page - 1 }}&category={{ current_category }}&region={{ current_region }}&company_name={{ current_company }}&keyword={{ current_keyword|urlencode }}&date_from={{ current_date_from }}&date_to={{ current_date_to }}"
+               class="btn btn-secondary px-3 py-1.5 text-sm rounded-md">
+                ← 上一页
+            </a>
+            {% endif %}
+
+            <span class="text-sm text-navy-500">
+                第
+                <input type="text"
+                       value="{{ current_page }}"
+                       size="1"
+                       class="page-input w-8 px-1 py-0.5 text-sm text-center border border-navy-100 rounded"
+                       onkeydown="if(event.key==='Enter'){var v=parseInt(this.value);if(v>=1&&v<={{ total_pages }}){var params=new URLSearchParams(window.location.search);params.set('page',v);window.location.href='?'+params.toString()}else{this.value='{{ current_page }}'}}">
+                / {{ total_pages }} 页
+            </span>
+
+            {% if current_page < total_pages %}
+            <a href="?page={{ current_page + 1 }}&category={{ current_category }}&region={{ current_region }}&company_name={{ current_company }}&keyword={{ current_keyword|urlencode }}&date_from={{ current_date_from }}&date_to={{ current_date_to }}"
+               class="btn btn-secondary px-3 py-1.5 text-sm rounded-md">
+                下一页 →
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    {% else %}
+
+    <!-- ====== 空状态 ====== -->
+    <div class="panel rounded-lg p-12 text-center">
+        {% if has_filters %}
+        <!-- 筛选无结果 -->
+        <div class="text-5xl mb-4">🔍</div>
+        <h2 class="text-lg font-semibold text-navy-800 mb-2">该筛选项下暂无内容</h2>
+        <p class="text-sm text-navy-500 mb-4">
+            当前筛选条件：
+            {% if current_category %}领域="{{ current_category }}"{% endif %}
+            {% if current_region %}地区="{{ current_region }}"{% endif %}
+            {% if current_company %}公司="{{ current_company }}"{% endif %}
+            {% if current_keyword %}关键词="{{ current_keyword }}"{% endif %}
+            {% if current_date_from or current_date_to %}时间="{{ current_date_from or '不限开始' }} ~ {{ current_date_to or '不限结束' }}"{% endif %}
+        </p>
+        <a href="/" class="btn btn-primary inline-block px-4 py-2 text-sm rounded-md">
+            清除所有筛选
+        </a>
+        {% else %}
+        <!-- 完全无数据 -->
+        <div class="text-5xl mb-4">📡</div>
+        <h2 class="text-lg font-semibold text-navy-800 mb-2">暂无动态</h2>
+        <p class="text-sm text-navy-500 mb-4">
+            系统正在采集数据中，请稍后再来查看。
+        </p>
+        <div class="text-xs text-navy-400 space-y-1">
+            <p>⚙️ 自动采集：每天 08:00 / 20:00</p>
+            <p>💡 也可点击顶部 🔄 采集 按钮手动触发</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% endif %}
+
+    <!-- ====== 数据管理面板 ====== -->
+    {% if unprocessed_total > 0 %}
+    <details class="panel mt-6 overflow-hidden">
+        <summary class="px-4 py-3 cursor-pointer hover:bg-navy-50 select-none">
+            <span class="text-sm font-medium text-navy-600">⚙️ 数据管理</span>
+            <span class="text-xs text-navy-300 ml-2">（{{ unprocessed_total }} 条待处理）</span>
+        </summary>
+        <div class="px-4 pb-4 border-t border-navy-50 pt-3">
+            <!-- 来源统计 -->
+            <div id="unprocessed-stats" class="mb-4">
+                <div class="text-xs text-navy-400 mb-1">未处理总计：<span class="font-semibold text-navy-600">{{ unprocessed_total }}</span> 条</div>
+                {% if unprocessed_stats %}
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-0.5 mt-1">
+                    {% for stat in unprocessed_stats %}
+                    <div class="flex justify-between text-xs text-navy-500">
+                        <span class="truncate mr-2">{{ stat.source_name }}</span>
+                        <span class="flex-shrink-0">{{ stat.count }} 条</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-xs text-navy-400">暂无未处理数据</div>
+                {% endif %}
+            </div>
+
+        </div>
+    </details>
+    {% endif %}
+
+{% endblock %}
