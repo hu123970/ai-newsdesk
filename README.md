@@ -45,8 +45,6 @@
 
 **最简单的方式：双击项目根目录下的 `start.bat`**，它会自动找到可用的 Python、检查依赖并启动。
 
-**最简单的方式：双击项目根目录下的 `start.bat`**，它会自动找到可用的 Python、检查依赖并启动。
-
 手动启动（Windows PowerShell，推荐）：
 
 ```powershell
