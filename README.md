@@ -86,7 +86,7 @@ INFO:     Uvicorn running on http://0.0.0.0:9999
 
 ### 2.（可选）接入 RSSHub + CookieCloud
 
-虎嗅、品玩和微博这几个源没有公开 RSS，需要经 **RSSHub** 中转；微博还需要登录态，靠 **CookieCloud** 把浏览器里的 Cookie 同步过去。
+虎嗅24小时、品玩实时快讯和微博这几个源没有公开 RSS，需要经 **RSSHub** 中转；微博还需要登录态，靠 **CookieCloud** 把浏览器里的 Cookie 同步过去。
 
 **这两个都是独立开源项目，不在本仓库里。** 需要时 clone 到与 `ai-news-aggregator` **同级**的目录（代码里按 `../rsshub/.env` 找配置，同级才找得到）：
 
