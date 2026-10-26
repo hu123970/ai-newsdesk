@@ -29,15 +29,13 @@
         <div class="w-full max-w-sm">
             <!-- 卡片 -->
             <div class="bg-white rounded-xl shadow-sm border border-navy-100 p-8">
-                <!-- Logo + 标题 -->
-                <div class="flex flex-col items-center mb-6">
-                    <img src="/static/logo.png" alt="AI NewsDesk" class="h-14 w-auto mb-4">
-                    <h1 class="text-xl font-bold text-navy-800 tracking-tight">{{ app_title }}</h1>
-                    <p class="text-xs text-navy-400 mt-1">AI NewsDesk · Industry Intelligence</p>
+                <!-- Logo（logo 内已含品牌名与副标，不再重复文字标题） -->
+                <div class="flex flex-col items-center mb-7">
+                    <img src="/static/logo.png" alt="AI NewsDesk" class="w-[280px] max-w-full h-auto">
                 </div>
 
                 <!-- ===== 身份选择（管理员 / 用户） ===== -->
-                <div class="flex gap-2 mb-5" id="role-selector" role="tablist" aria-label="登录身份">
+                <div class="flex gap-2 mb-6" id="role-selector" role="tablist" aria-label="登录身份">
                     <button type="button" data-role="admin" class="role-btn role-btn-active flex-1" onclick="selectRole('admin')">👑 管理员</button>
                     <button type="button" data-role="user" class="role-btn flex-1" onclick="selectRole('user')">👤 用户</button>
                 </div>
@@ -47,12 +45,13 @@
                     <form id="login-form" class="space-y-4" onsubmit="return submitLogin(event)">
                         <div>
                             <label class="block text-xs text-navy-600 mb-1" for="username">用户名</label>
-                            <input type="text" id="username" name="username" autocomplete="username"
+                            <input type="text" id="username" name="username" autocomplete="off"
+                                   autocapitalize="off" spellcheck="false"
                                    class="input-field w-full h-10 px-3 text-sm" placeholder="请输入用户名" required>
                         </div>
                         <div>
                             <label class="block text-xs text-navy-600 mb-1" for="password">密码</label>
-                            <input type="password" id="password" name="password" autocomplete="current-password"
+                            <input type="password" id="password" name="password" autocomplete="new-password"
                                    class="input-field w-full h-10 px-3 text-sm" placeholder="请输入密码" required>
                         </div>
                         <div id="login-error" class="hidden text-xs text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2"></div>
@@ -115,6 +114,25 @@
     <script>
         // 登录成功后的跳转地址（服务端传入，已校验为站内路径）
         var NEXT = {{ next | tojson }};
+
+        // ---- 阻止浏览器密码管理器回填历史账号 ----
+        // 本项目改过登录账号（旧值已失效），但浏览器仍可能把以前保存的账号密码自动填进来。
+        // 这里：① 关闭 autofill（见 input 的 autocomplete）；② 页面加载后清空未被用户输入过的字段。
+        (function () {
+            var fields = [document.getElementById('username'), document.getElementById('password')];
+            fields.forEach(function (el) {
+                if (el) {
+                    el.addEventListener('input', function () { el.dataset.userInput = '1'; });
+                }
+            });
+            function clearAutofilled() {
+                fields.forEach(function (el) {
+                    if (el && !el.dataset.userInput) el.value = '';
+                });
+            }
+            window.addEventListener('load', function () { setTimeout(clearAutofilled, 80); });
+            window.addEventListener('pageshow', function () { setTimeout(clearAutofilled, 80); });
+        })();
 
         // ---- 身份选择（管理员 / 用户） ----
         var CURRENT_ROLE = 'admin';
