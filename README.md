@@ -30,7 +30,7 @@
 | 定时任务 | APScheduler |
 | AI | openai SDK（OpenAI 兼容接口，可接多家供应商） |
 | 推送 | 钉钉群机器人 Webhook |
-| 采集中转（可选） | RSSHub + CookieCloud（微博等需要登录态的源） |
+| 采集中转（可选） | RSSHub + CookieCloud（独立开源项目，不包含在本仓库） |
 
 ---
 
@@ -84,23 +84,34 @@ INFO:     Uvicorn running on http://0.0.0.0:9999
 
 > 首次登录后请到「系统设置 → 修改登录密码」改掉默认密码。
 
-### 2. 启动 RSSHub（可选，需要虎嗅 / 品玩 / 微博源时）
+### 2.（可选）接入 RSSHub + CookieCloud
+
+虎嗅、品玩和微博这几个源没有公开 RSS，需要经 **RSSHub** 中转；微博还需要登录态，靠 **CookieCloud** 把浏览器里的 Cookie 同步过去。
+
+**这两个都是独立开源项目，不在本仓库里。** 需要时 clone 到与 `ai-news-aggregator` **同级**的目录（代码里按 `../rsshub/.env` 找配置，同级才找得到）：
 
 ```powershell
-cd D:\dsh\rsshub
-pnpm start          # 默认监听 1200；仓库内已带依赖，可直接 start
-# 没装 pnpm：
-$env:NODE_ENV="production"; node dist/index.mjs
+cd D:\dsh
+git clone https://github.com/DIYgod/RSSHub.git rsshub
+git clone https://github.com/easychen/CookieCloud.git cookiecloud-server
+
+cd D:\dsh\rsshub; pnpm install
+cd D:\dsh\cookiecloud-server\api; npm install
 ```
 
-> RSSHub 首次启动需 30–60 秒加载路由，日志出现 `RSSHub is running on port 1200` 即就绪。
-
-### 3. 启动 CookieCloud（可选，仅微博源需要，用于自动续期微博 Cookie）
+启动（两个都要开，先 CookieCloud 后 RSSHub）：
 
 ```powershell
+# 终端 1：CookieCloud，默认监听 8088
 cd D:\dsh\cookiecloud-server\api
-node app.js         # 默认监听 8088
+node app.js
+
+# 终端 2：RSSHub，默认监听 1200；首次启动需 30–60 秒加载路由
+cd D:\dsh\rsshub
+pnpm start
 ```
+
+微博源还需要把登录 Cookie 填到 `rsshub/.env` 的 `WEIBO_COOKIES`（浏览器登录 weibo.com 后从 F12 复制整串）。两个项目的其余配置见各自仓库文档。
 
 三个服务的关系：
 
@@ -144,6 +155,8 @@ ai-news-aggregator/
 ├── render.yaml          # Render 一键部署
 └── start.bat            # Windows 一键启动
 ```
+
+> `rsshub/` 与 `cookiecloud-server/` **不在本仓库**——它们是第三方开源项目，按需 clone 到同级目录即可（见「快速开始」第 2 步）。
 
 ---
 
@@ -229,3 +242,4 @@ py -3 -c "import fastapi, uvicorn, jinja2, feedparser, httpx, bs4, openai, apsch
 ## 说明
 
 - 演示数据库内是 2026-07-28 ~ 2026-08-12 期间采集的公开新闻与据此生成的日报，用于展示完整效果。
+- 仓库不含任何真实凭据：LLM API Key 与钉钉 Webhook 在页面「系统设置」里填（存数据库），微博 Cookie 属于 RSSHub 那边的配置，不在本仓库。
