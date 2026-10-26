@@ -23,6 +23,7 @@
 
 import json
 import logging
+import os
 
 from config import Config
 from database import get_settings, set_setting
@@ -138,6 +139,14 @@ def load_runtime_settings():
         set_setting("target_companies", json.dumps(prompts.DEFAULT_COMPANIES, ensure_ascii=False))
         db = get_settings()
 
+    # ---- 当前使用的供应商（环境变量优先，便于部署时用配置固定） ----
+    # 优先级：LLM_ACTIVE_PROVIDER（环境变量）> 数据库 > 默认 deepseek。
+    # 这样容器重启、数据库回滚之后，部署配置依然能决定用哪家。
+    env_active = (os.getenv("LLM_ACTIVE_PROVIDER") or "").strip()
+    active = env_active or (db.get("llm_active_provider") or "").strip() or DEFAULT_PROVIDER
+    if active not in PROVIDERS:
+        active = DEFAULT_PROVIDER
+
     # ---- 供应商配置迁移（老库兼容） ----
     # 老版本只有 deepseek_api_key 键；升级后把它灌进 llm_providers["deepseek"]，
     # 保证已配置的 DeepSeek Key 不丢，且后续走统一的多供应商读写。
@@ -152,10 +161,29 @@ def load_runtime_settings():
             }}
             set_setting("llm_providers", json.dumps(providers, ensure_ascii=False))
 
-    # ---- 当前使用的供应商（llm_active_provider，默认 deepseek） ----
-    active = (db.get("llm_active_provider") or Config.LLM_ACTIVE_PROVIDER or DEFAULT_PROVIDER).strip()
-    if active not in PROVIDERS:
-        active = DEFAULT_PROVIDER
+    # ---- 当前供应商还没有 Key 时，用环境变量补种 ----
+    # 部署场景（容器盘是临时的）靠这段保证：每次启动都能从环境变量把 Key 恢复回来。
+    # 通用变量：LLM_API_KEY / LLM_BASE_URL / LLM_MODEL（对任何供应商都适用）；
+    # 兼容变量：DEEPSEEK_*（仅当前供应商是 deepseek 时兜底，老配置不用改）。
+    cur_cfg = providers.get(active) or {}
+    if not (cur_cfg.get("api_key") or "").strip():
+        env_key = (os.getenv("LLM_API_KEY") or "").strip()
+        env_base = (os.getenv("LLM_BASE_URL") or "").strip()
+        env_model = (os.getenv("LLM_MODEL") or "").strip()
+        if active == "deepseek":
+            env_key = env_key or (os.getenv("DEEPSEEK_API_KEY") or "").strip()
+            env_base = env_base or (os.getenv("DEEPSEEK_BASE_URL") or "").strip()
+            env_model = env_model or (os.getenv("DEEPSEEK_MODEL") or "").strip()
+        if env_key:
+            default = PROVIDERS.get(active) or PROVIDERS[DEFAULT_PROVIDER]
+            providers[active] = {
+                "api_key": env_key,
+                "base_url": env_base or default["base_url"],
+                "model": env_model or default["model"],
+            }
+            set_setting("llm_providers", json.dumps(providers, ensure_ascii=False))
+            logger.info(f"已用环境变量为供应商 {active} 初始化 API Key")
+
     Config.LLM_ACTIVE_PROVIDER = active
 
     # ---- 把当前供应商配置同步到 Config（各 LLM 调用点沿用） ----
