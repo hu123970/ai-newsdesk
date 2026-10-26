@@ -229,4 +229,3 @@ py -3 -c "import fastapi, uvicorn, jinja2, feedparser, httpx, bs4, openai, apsch
 ## 说明
 
 - 演示数据库内是 2026-07-28 ~ 2026-08-12 期间采集的公开新闻与据此生成的日报，用于展示完整效果。
-- `data/` 与 `.env` 已在 `.gitignore` 中排除；如需把示例数据一起发布，请自行调整忽略规则。
