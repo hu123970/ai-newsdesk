@@ -87,10 +87,10 @@ INFO:     Uvicorn running on http://0.0.0.0:9999
 >### 产品界面展示
 
 **1. 前端登录界面**
-[![前端登录界面](https://github.com/user-attachments/assets/e99e4346-b371-445f-a322-90000e18edc5)](https://github.com/user-attachments/assets/e99e4346-b371-445f-a322-90000e18edc5)
+[![前端登录界面](https://github.com/user-attachments/assets/ad30b2e0-6058-4753-90e7-1a25ba7ffd0f)](https://github.com/user-attachments/assets/ad30b2e0-6058-4753-90e7-1a25ba7ffd0f)
 
 **2. AI NewsDesk工作台（主界面）**
-[![AI NewsDesk工作台](https://github.com/user-attachments/assets/6c19e330-5db9-41a4-a8f6-262a72e68135)](https://github.com/user-attachments/assets/6c19e330-5db9-41a4-a8f6-262a72e68135)
+[![AI NewsDesk工作台](https://github.com/user-attachments/assets/4d128cfa-f83e-46ed-8529-3cbcb0ac96a6)](https://github.com/user-attachments/assets/4d128cfa-f83e-46ed-8529-3cbcb0ac96a6)
 
 ### 2.（可选）接入 RSSHub + CookieCloud
 
