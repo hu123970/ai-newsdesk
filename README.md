@@ -84,12 +84,14 @@ INFO:     Uvicorn running on http://0.0.0.0:9999
 
 > 首次登录后请到「系统设置 → 修改登录密码」改掉默认密码。
 >
->### 产品界面展示
+### 产品界面展示
 
 **1. 前端登录界面**
+
 [![前端登录界面](https://github.com/user-attachments/assets/ad30b2e0-6058-4753-90e7-1a25ba7ffd0f)](https://github.com/user-attachments/assets/ad30b2e0-6058-4753-90e7-1a25ba7ffd0f)
 
 **2. AI NewsDesk工作台（主界面）**
+
 [![AI NewsDesk工作台](https://github.com/user-attachments/assets/4d128cfa-f83e-46ed-8529-3cbcb0ac96a6)](https://github.com/user-attachments/assets/4d128cfa-f83e-46ed-8529-3cbcb0ac96a6)
 
 ### 2.（可选）接入 RSSHub + CookieCloud
