@@ -205,6 +205,38 @@ RSS 源 → collector 采集（httpx + feedparser）
 
 ---
 
+## 部署到公网（免费）
+
+仓库内置了容器化与平台配置，可直接部署：
+
+| 文件 | 用途 |
+|---|---|
+| `Dockerfile` | 通用镜像：非 root 运行、按 `$PORT` 监听、`/login` 健康检查 |
+| `.dockerignore` | 构建时排除 `.env` / `logs` / 文档 |
+| `render.yaml` | Render 一键 Blueprint（免费套餐、自动生成 `SESSION_SECRET`） |
+
+**Render 部署（推荐，约 5 分钟）**
+
+1. 把仓库推到 GitHub；
+2. Render → **New +** → **Web Service** → 选中本仓库；
+3. Runtime 选 **Docker**、Instance 选 **Free**、Region 选 **Singapore**、Health Check Path 填 `/login`；
+4. Environment 加三条：
+
+   | Key | Value |
+   |---|---|
+   | `SESSION_SECRET` | `py -3 -c "import secrets;print(secrets.token_hex(32))"` 的输出 |
+   | `APP_TITLE` | `AI 行业动态聚合` |
+   | `COLLECT_CRON_HOURS` | `4`（只在凌晨采集，避免演示时打扰） |
+
+5. 点 **Create Web Service**，拿到 `https://xxx.onrender.com`。
+
+免费版限制：15 分钟无访问会休眠（首次打开等 30–60 秒）；磁盘是临时的，重启后数据库回到镜像里的初始版本。
+
+> ⚠️ **Vercel 不适合本项目**：文件系统只读（SQLite 写不了）、没有常驻进程（APScheduler 不触发）、函数有时长上限。
+> 备选平台：**Hugging Face Spaces**（Docker、免费、无需信用卡，`app_port` 填 `8000`）；面试当天也可用 `cloudflared tunnel --url http://127.0.0.1:9999` 临时给公网地址。
+
+---
+
 ## 常见问题（启动排障）
 
 | 现象 | 原因 | 解决 |
